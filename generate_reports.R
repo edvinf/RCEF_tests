@@ -1,0 +1,1 @@
+rmarkdown::render(input = "demonstrations/stock_coordination.Rmd", output_dir = "reports")

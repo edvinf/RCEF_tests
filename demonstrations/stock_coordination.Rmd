@@ -9,17 +9,20 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Format
-We will define some preliminary vocabularies for the domain columns:
+Some proof-of-concept checks to verify that candidates for an exchange format for National / Regional estimation in RDBES/TAF can be used for stock-coordination purposes.
 
-```{r}
-POPULATION_VARIABLES <- c("vesselFlagCounty", "year", "catchCategory", "speciesCode")
+## Format
+We will define some preliminary vocabularies for the columns that are valid in the RCEF format:
+
+```{r format}
+POPULATION_VARIABLES <- c("vesselFlagCountry", "year", "catchCategory", "speciesCode")
 ACTIVITY_DOMAIN_VARIABLES <- c("Quarter",	"Month","stockArea",	"area",	"metier6",	"Fleet")
 FISH_DOMAIN_VARIABLES <- c("MinAge",	"MaxAge", "Sex")
 ESTIMATES_VALUE_VARIABLES <- c("totalNumber", "totalWeightLive", "varTotalNumber", "varTotalWeight")
 SAMPLE_DESCRIPTION_VARIABLES <- c("numSamplesLength", "numLngMeas", "numSamplesAge", "sampledCatch")
 ```
 
+Some example files are located in ../data .
 
 ## Aggregate domains
 
@@ -73,7 +76,7 @@ aggregateActivityDomains <- function(RCEF, desiredDomains){
   # iterate over value variables and add
   for (e in names(estimates)){
     if (e %in% ESTIMATES_VALUE_VARIABLES){
-      agg <- estimates[,list(agg=sum(get(e))), by=c("fishDomain", "activityDomain")]
+      agg <- estimates[,list(agg=sum(get(e))), by=c("fishDomain", "activityDomain", POPULATION_VARIABLES)]
       names(agg)[names(agg)=="agg"] <- e
       
       if (is.null(aggregated)){
@@ -91,7 +94,7 @@ aggregateActivityDomains <- function(RCEF, desiredDomains){
     }
   }
   # Compute aggregated mean weight
-  agg <- estimates[,list(meanWeightLive = sum(meanWeightLive*totalNumber)/sum(totalNumber), varMeanWeightLive = sum(varMeanWeightLive * (totalNumber/sum(totalNumber))**2)), by=c("fishDomain", "activityDomain")]
+  agg <- estimates[,list(meanWeightLive = sum(meanWeightLive*totalNumber)/sum(totalNumber), varMeanWeightLive = sum(varMeanWeightLive * (totalNumber/sum(totalNumber))**2)), by=c("fishDomain", "activityDomain", POPULATION_VARIABLES)]
   if (is.null(aggregated)){
         aggregated <- agg
   }
@@ -112,27 +115,104 @@ It is not clear that sample description parameters can be aggregated across acti
 
 Applying this function to an example file with the estimates reported by age and gear:
 
-```{r}
+```{r aggregateGear}
 domainEstimates <- readRDS("../data/estimates_gear_caa.rds")
-desiredDomains <- data.table::data.table(activityDomain="all", metier6=c("OTB_SPF_>0_0_0_all","OTM_SPF_>0_0_0_all","PS1_SPF_>0_0_0_all"))
-aggregatedEstimates <- aggregateActivityDomains(domainEstimates, desiredDomains)
-aggregatedEstimates$ESTIMATES
+desiredDomains <- data.table::data.table(activityDomain="NSHER", metier6=c("OTB_SPF_>0_0_0_all","OTM_SPF_>0_0_0_all","PS1_SPF_>0_0_0_all"))
+totalAggregatedEstimates <- aggregateActivityDomains(domainEstimates, desiredDomains)
+totalAggregatedEstimates$ESTIMATES
 ```
 Similarly, grouping only two gears:
 
-```{r}
+```{r aggregateGear2}
 desiredDomains <- data.table::data.table(activityDomain=c("OT", "OT", "PS"), metier6=c("OTB_SPF_>0_0_0_all","OTM_SPF_>0_0_0_all","PS1_SPF_>0_0_0_all"))
 aggregatedEstimates <- aggregateActivityDomains(domainEstimates, desiredDomains)
 aggregatedEstimates$ESTIMATES
 ```
 
 
-An example of how estimates for fish domains can be aggregated, redefine plusgroup:
+## Imputing mean weight
 
-```{r}
+If estimates cannot be provided for a certain activity domain, or they are provided with too low precision, one may desire to impute mean weight and weigth fraction in fishdomains (e.g. age groups) from a different activity domain, and provide totalNumber as a ratio estimate. An example is provided in the following function:
+
+```{r imputeMeanWeight}
+#' @param RCEF
+#' @param imputeTo The activity domain to impute to
+#' @param imputeFrom The activity domain to impute from
+imputeMeanWeight <- function(RCEF, imputeTo, imputeFrom){
+  
+  stopifnot(imputeFrom %in% RCEF$CATCH$activityDomain)
+  stopifnot(imputeFrom %in% RCEF$ESTIMATES$activityDomain)
+  stopifnot(imputeTo %in% RCEF$CATCH$activityDomain)
+
+  estimatesImputed <- RCEF$ESTIMATES[activityDomain==imputeFrom,]
+  estimatesImputed$fraction <- estimatesImputed$totalNumber * estimatesImputed$meanWeightLive / sum(estimatesImputed$totalNumber * estimatesImputed$meanWeightLive)
+  estimatesImputed$varFraction <- estimatesImputed$varTotalNumber * (estimatesImputed$meanWeightLive / sum(estimatesImputed$totalNumber * estimatesImputed$meanWeightLive))**2
+  
+  for (e in names(estimatesImputed)){
+    if (e %in% ESTIMATES_VALUE_VARIABLES){
+      estimatesImputed[[e]] <- NA
+    }
+  }
+  for (e in names(estimatesImputed)){
+    if ( e %in% SAMPLE_DESCRIPTION_VARIABLES){
+    estimatesImputed[[e]] <- 0      
+    }
+  }
+  estimatesImputed$activityDomain <- imputeTo
+  totalWeight <- sum(RCEF$CATCH$officialWeight[RCEF$CATCH$activityDomain == imputeTo])*1000
+  
+  estimatesImputed$totalNumber <- totalWeight * estimatesImputed$fraction / estimatesImputed$meanWeightLive
+  estimatesImputed$varTotalNumber <- estimatesImputed$varFraction * (totalWeight / estimatesImputed$meanWeightLive)**2
+  estimatesImputed$fraction <- NULL
+  estimatesImputed$varFraction <- NULL
+  
+  estimates <- RCEF$ESTIMATES[RCEF$ESTIMATES$activityDomain != imputeTo,]
+  estimates <- rbind(estimates, estimatesImputed)
+  
+  RCEF$ESTIMATES <- estimates
+  return(RCEF)
+}
+```
+
+Note that in this case, it is quite useful to be able to explicitly set the sampling description parameters to 0. Perhaps supporting the idea of letting these variables be a lower bound.
+
+Applying this to the example file that is missing estimate for a domain, and aggregating:
+
+```{r imputeByGear}
+#impute for missing domains
+partialDomainEstimates <- readRDS("../data/estimates_gear_caa_missing_domains.rds")
+imputedDomainEstimates <- imputeMeanWeight(partialDomainEstimates, "NSHER/OTB", "NSHER/OTM")
+imputedDomainEstimates <- imputeMeanWeight(imputedDomainEstimates, "NSHER/PS1", "NSHER/OTM")
+
+#add up to grand total
+desiredDomains <- data.table::data.table(activityDomain="NSHER", metier6=c("OTB_SPF_>0_0_0_all","OTM_SPF_>0_0_0_all","PS1_SPF_>0_0_0_all"))
+imputedTotalEstimates <- aggregateActivityDomains(imputedDomainEstimates, desiredDomains)
+
+imputedDomainEstimates$ESTIMATES
+imputedTotalEstimates$ESTIMATES
+```
+
+## Comparisons
+
+As a quick quality check we compare the aggregated estimated and the aggregated imputed estimate with the direct estimate of total number in each age group (provided in ../data):
+
+```{r comparisons}
+totalEstimates <- readRDS("../data/estimates_caa.rds")
+totalEstimates$ESTIMATES$Method="Direct"
+imputedTotalEstimates$ESTIMATES$Method="Imputed"
+totalAggregatedEstimates$ESTIMATES$Method="Aggregated"
+
+comparison <- rbind(totalEstimates$ESTIMATES, imputedTotalEstimates$ESTIMATES, totalAggregatedEstimates$ESTIMATES)
+
+ggplot2::ggplot(comparison) +
+    ggplot2::geom_col(ggplot2::aes(x=fishDomain, y=totalNumber, fill=Method), position="dodge") +
+    ggplot2::geom_errorbar(ggplot2::aes(x=fishDomain, ymin=totalNumber - sqrt(varTotalNumber), ymax=totalNumber + sqrt(varTotalNumber), group=Method), width=.2, position=ggplot2::position_dodge(.9)) +
+  ggplot2::ylab("total number +/- SE") +
+  ggplot2::xlab("Age group")
 
 ```
 
+## Issues
 
-## Imputing domains
-
+* Should we change the representation of values in the ESTIMATES table, so that more generic aggregation scripts can be made? For instance represent all variables as VARIABLE, TOTAL, MEAN, TOTALVAR, and MEANVAR. In addition to TOTALNUMBER and TOTALNUMBERVAR. This would also provide a solution to the open issue about how to represent different length measurements (total length, carapax length, etc.)
+* How should we deal with sample description parameters. It seems they cannot generally be aggregated across domains. Redifining them to be a lower bound makes it trivial to aggregate, and allows us to label imputed domains with sample size 0. Otherwise they are probably not important to keep after stock-coordination, and we could set them to NA. Having stock-coordination routines return the same format as they accept, facilitates stringing together stock-coordination, as is done repeatedly above.
