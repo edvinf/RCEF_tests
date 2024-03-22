@@ -9,22 +9,27 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Convert ICEF to RCEF
+# Convert ICEF to RCEF
+
+An attempt at converting an InterCatch exchange file to a candidatr RCEF format.
+
+## Format
 
 Define variables available for population and domain definitions (in RCEF nomenclature)
 ```{r}
 POPULATION_VARIABLES <- c("vesselFlagCountry", "year", "speciesCode", "catchCategory")
-ACTIVITY_DOMAIN_VARIABLES <- c("quarter", "month", "fleet", "area", "usage")
+ACTIVITY_DOMAIN_VARIABLES <- c("quarter", "month", "fleet", "area")
+FISH_DOMAIN_VARIABLES <- c("sex", "maturity", "minAge", "maxAge")
 ```
 
-```{r readIC}
-ICexample <- RstoxData::parseInterCatch("../data/intercatch_example.csv")
-```
+## Conversion
+
+Define some general field-conversion functions
 
 ```{r}
 convertCode <- function(code, codemap){
   if (all(code %in% names(codemap))){
-    return(codemap[code])
+    return(unlist(codemap[code]))
   }
   stop("Code not recognized.")
 }
@@ -72,43 +77,158 @@ convertWeightKg <- function(unit, weight){
 #' get activity domain from tables, after columns has been converted to RCEF.
 getActvityDomain <- function(tab){
   tab <- data.table::as.data.table(tab)
-  return(apply(tab[,.SD,.SDcol=ACTIVITY_DOMAIN_VARIABLES[ACTIVITY_DOMAIN_VARIABLES %in% names(tab)]], 1, paste, collapse="/"))
+  domainVars <- c(POPULATION_VARIABLES, ACTIVITY_DOMAIN_VARIABLES)
+  return(apply(tab[,.SD,.SDcol=domainVars[domainVars %in% names(tab)]], 1, paste, collapse="/"))
+}
+
+convertSex <- function(ICsex){
+ codeMap <- list('F'="F", 'M'="M", 'N'="U")
+  return(convertCode(ICsex, codeMap)) 
+}
+
+convertMaturity <- function(ICmaturity){
+  if (all(is.na(ICmaturity))){
+    return(ICmaturity)
+  }
+  stop("maturity conversion not implemented.")
+ codeMap <- list()
+  return(convertCode(ICmaturity, codeMap)) 
+}
+
+#' get fish domain from tables, after columns has been converted to RCEF.
+getFishDomain <- function(tab){
+  tab <- data.table::as.data.table(tab)
+  domainVars <- c(POPULATION_VARIABLES, FISH_DOMAIN_VARIABLES)
+  return(apply(tab[,.SD,.SDcol=domainVars[domainVars %in% names(tab)]], 1, paste, collapse="/"))
+}
+
+convertNumber <- function(unit, number){
+  factor <- rep(as.numeric(NA), length(number))
+  factor[unit=="k"] <- 1e3
+  factor[unit=="m"] <- 1e6
+  factor[unit=="n"] <- 1
+  return(number*factor)
+}
+
+#convert weight to g per definition for weightlive (https://vocab.ices.dk/?ref=1606)
+convertWeightG <- function(unit, weight){
+  factors <- rep(as.numeric(NA), length(unit))
+  factors[unit=="g"] <- 1
+  factors[unit=="kg"] <- 1e3
+  return(weight*factors)
+}
+
+#tentatively convert length without specifying measurment
+convertLengthCm <- function(unit, lengthCm){
+  factors <- rep(as.numeric(NA), length(unit))
+  factors[unit=="cm"] <- 1
+  factors[unit=="mm"] <- 1e-1
+  return(lengthCm*factors)
+}
+
+convertFishingDays <- function(unit, effort){
+  eff <- rep(as.numeric(NA), length(unit))
+  eff[unit=="fd"] <- effort[unit=="fd"]
+  return(eff)
+}
+
+```
+
+
+Define functions to extract fish domains. They need to be extracted both for making the FISHDOMAIN table and the ESTIMATE table of RCEF, so we define an auxilirary function that supports both. In order to make the fish domains, we need to specify a max age for the plus group, which is not defined in InterCatch:
+
+```{r}
+#' extract fish domain portion of SDtable, keep all rows in same order as SDtabe.
+extractSDWfishDomains <- function(SDtable, plusgroupMax){
+  fishdomain <- SDtable
+  
+  #population variables
+  fishdomain <- SDtable[,c("Country", "Year")]
+  names(fishdomain) <- c("vesselFlagCountry", "year")
+  fishdomain$speciesCode <- convertSpeciesCode(SDtable$Species)
+  fishdomain$catchCategory <- convertCatchCategory(SDtable$CatchCategory)
+  
+  
+  fishdomain$sex <- convertSex(SDtable$Sex)
+  fishdomain$maturity <- convertMaturity(SDtable$Maturity)
+  
+  if (any(SDtable$CANUMtype=="Age")){
+    fishdomain$minAge <- as.numeric(NA)
+    fishdomain$maxAge <- as.numeric(NA)
+    fishdomain$minAge[SDtable$CANUMtype=="Age"] <- SDtable$AgeLength[SDtable$CANUMtype=="Age"]
+    fishdomain$maxAge[SDtable$CANUMtype=="Age"] <- SDtable$AgeLength[SDtable$CANUMtype=="Age"]
+    fishdomain$maxAge[SDtable$CANUMtype=="Age" & SDtable$AgeLength==SDtable$PlusGroup] <- plusgroupMax
+  }
+  
+  if (any(SDtable$CANUMtype=="Length")){
+    stop("Conversion for length not supported.")
+  }
+  
+  for (col in names(fishdomain)){
+    if (all(is.na(fishdomain[[col]]))){
+      fishdomain[[col]] <- NULL
+    }
+  }
+
+  fishdomain$fishDomain <- getFishDomain(fishdomain)
+  return(fishdomain)
+}
+
+#' define fish domains
+#' @param SDtable
+#' @param plusgroupMax the value to use as max age for any group representing an IC plusgroup
+extractFishDomain <- function(SDtable, plusgroupMax){
+  fishdomain <- extractSDWfishDomains(SDtable, plusgroupMax)
+  fishdomain <- fishdomain[!duplicated(fishdomain$fishDomain),]
+  return(fishdomain)
 }
 ```
 
+Define functions to extract activity domains. They need to be extracted for making the CATCH table and the ESTIMATE table of RCEF, so we define an auxilirary function that supports both, and we will define the function to extract the CATCH table:
 
 ```{r}
-extractFishDomain <- function(){}
-```
+#' extract population variables and activity domain variables, and annotate activity domain
+extractActivityDomains <- function(table){
+  ACTDOM <- table[,c("Country", "Year")]
+  names(ACTDOM) <- c("vesselFlagCountry", "year")
+  ACTDOM$speciesCode <- convertSpeciesCode(table$Species)
+  ACTDOM$catchCategory <- convertCatchCategory(table$CatchCategory)
+  
+  ACTDOM$quarter <- convertQuarter(table$SeasonType, table$Season)
+  ACTDOM$month <- convertMonth(table$SeasonType, table$Season)
+  ACTDOM$fleet <- table$Fleet
+  ACTDOM$area <- convertArea(table$AreaType, table$FishingArea)
+  if (!all(is.na(table$DepthRange))){
+    stop("Support for the field DepthRange not implemented.")
+  }
+  if (!all(is.na(table$Stock))){
+    stop("Support for the field Stock not implemented.")
+  }
+  if (!all(table$ReportingCategory=="R")){
+    stop("Conversion only defined for reporting category 'R'")
+  }
+  if (!all(is.na(table$DataToFrom))){
+    stop("Conversion only defined for reporting category 'R', DataToFrom should be NA.")
+  }
+  if (!all(is.na(table$QualityFlag))){
+    stop("Support for the field QualityFlag is not implemented.")
+  }
+  
+  ACTDOM$activityDomain <- getActvityDomain(ACTDOM)
+  
+  return(ACTDOM)
+}
 
-```{r}
 extractCatch <- function(SItable){
   
   #population variables
-  CATCH <- SItable[,c("Country", "Year")]
-  names(CATCH) <- c("vesselFlagCountry", "year")
-  CATCH$speciesCode <- convertSpeciesCode(SItable$Species)
-  CATCH$catchCategory <- convertCatchCategory(SItable$CatchCategory)
-  CATCH$quarter <- convertQuarter(SItable$SeasonType, SItable$Season)
-  CATCH$month <- convertMonth(SItable$SeasonType, SItable$Season)
-  CATCH$fleet <- SItable$Fleet
-  CATCH$area <- convertArea(SItable$AreaType, SItable$FishingArea)
-  if (!all(is.na(SItable$DepthRange))){
-    stop("Support for the field DepthRange not implemented.")
+  CATCH <- extractActivityDomains(SItable)
+  if (any(CATCH$catchCategory!="Lan")){
+    stop("Only support for catchCategory 'Lan' is implemented")
   }
-  if (!all(is.na(SItable$Stock))){
-    stop("Support for the field Stock not implemented.")
-  }
-  if (!all(SItable$ReportingCategory=="R")){
-    stop("Conversion only defined for reporting category 'R'")
-  }
-  if (!all(is.na(SItable$DataToFrom))){
-    stop("Conversion only defined for reporting category 'R', DataToFrom should be NA.")
-  }
+  
   CATCH$landingCategory <- convertUsage(SItable$Usage)
-  if (!all(is.na(SItable$QualityFlag))){
-    stop("Support for the field QualityFlag is not implemented.")
-  }
+  
   CATCH$scientificWeight <- convertWeightKg(SItable$UnitCATON, SItable$CATON)
   CATCH$officialWeight <- convertWeightKg(SItable$UnitCATON, SItable$Offlandings)
   if (!all(is.na(SItable$varCATON))){
@@ -138,68 +258,130 @@ extractCatch <- function(SItable){
       CATCH[[col]] <- NULL
     }
   }
-  
-  CATCH$activityDomain <- getActvityDomain(CATCH)
 
   return(CATCH)
   
 }
 ```
 
-```{r}
-extractEffort <- function(){}
-```
+We will define a function to extract the EFFORT table:
 
 ```{r}
-extractEstimates <- function(){
-  stop("Handle samples origin from SI table.")
+extractEffort <- function(SItable){  
+  effort <- SItable[,c("Country", "Year")]
+  names(effort) <- c("vesselFlagCountry", "year")
   
+  effort$quarter <- convertQuarter(SItable$SeasonType, SItable$Season)
+  effort$month <- convertMonth(SItable$SeasonType, SItable$Season)
+  effort$fleet <- SItable$Fleet
+  effort$area <- convertArea(SItable$AreaType, SItable$FishingArea)
+  if (!all(is.na(SItable$DepthRange))){
+    stop("Support for the field DepthRange not implemented.")
+  }
+  if (!all(is.na(SItable$AreaQualifier))){
+    stop("Support for the field AreaQualifier not implemented.")
+  }
+  if (!all(is.na(SItable$unitEffort) | (SItable$unitEffort %in% c("fd")))){
+    stop("Support the some effort units are not implemented.")
+  }
+  effort$officalFishingDays <- convertFishingDays(effort$unitEffort, effort$effort)
+  
+  return(effort)
 }
 ```
 
+We will define a function to extract the ESTIMATE table. Mostly this is constructed from the SDtable, but it also need access to one variable at the SI table. In addtion it needs to be informed about two parameters not encoded in InterCatch:
+
+```{r}
+extractEstimates <- function(SDtable, SItable, plusgroupMax, lengthMeasurement){
+  
+  # look up samples origin for each domain
+  SIactDom <- extractActivityDomains(SItable)
+  SIactDom$SamplesOrigin <- SItable$SamplesOrigin
+  SIactDom <- SIactDom[!duplicated(SIactDom$activityDomain),c("activityDomain", "SamplesOrigin")]
+  
+  #annotate domains
+  estimates <- extractSDWfishDomains(SDtable, plusgroupMax)
+  activityDomains <- extractActivityDomains(SDtable)
+  estimates <- cbind(estimates, activityDomains[,.SD, .SDcol=names(activityDomains)[!(names(activityDomains) %in% POPULATION_VARIABLES)]])
+  
+  estimates <- estimates[,.SD, .SDcol=c(POPULATION_VARIABLES, "activityDomain", "fishDomain")]
+  
+  #add values
+  estimates$totalNumber <- convertNumber(SDtable$unitCANUM, SDtable$NumberCaught)
+  estimates$meanWeightLive <- convertWeightG(SDtable$unitMeanWeight, SDtable$MeanWeight)
+  
+  if (any(!is.na(SDtable$MeanLength)) & lengthMeasurement != "TotalLength"){
+    stop("Only conversion with total length is implemented.")
+  }
+
+  estimates$meanTotalLength <- convertLengthCm(SDtable$UnitMeanLength, SDtable$MeanLength)
+  
+  #add sample descriptions
+  estimates$samplesOrigin <- SIactDom$SamplesOrigin[match(estimates$activityDomain, SIactDom$activityDomain)]
+  estimates$sampledCatch <- SDtable$SampledCatch
+  estimates$numSamplesLngt <- SDtable$NumSamplesLngt
+  estimates$numLngtMeas <- SDtable$NumLngtMeas  
+  estimates$numSamplesAge <- SDtable$NumSamplesAge  
+  estimates$numAgeMeas <- SDtable$NumAgeMeas  
+  return(estimates)
+}
+```
+
+We combine these to make a "complete" conversion function:
+
 ```{r}
 #' Convert IC data to RCEF
-convert <- function(IC){
+#' @param IC Data in InterCatch Exchange format, as parsed by RstoxData::parseInterCatch
+#' @param plusgroupMax the value to use as max age for any group representing an IC plusgroup
+convert <- function(IC, plusgroupMax=100, lengthMeasurement="TotalLength"){
   RCEF <- list()
   RCEF$CATCH <- extractCatch(IC$SI)
-  RCEF$ESTIMATES <- extractEstimates(IC$SD)
+  RCEF$FISHDOMAIN <- extractFishDomain(IC$SD, plusgroupMax)
+  RCEF$ESTIMATES <- extractEstimates(IC$SD, IC$SI, plusgroupMax, lengthMeasurement)
   RCEF$EFFORT <- extractEffort(IC$SI)
-  RCEF$FISHDOMAIN <- extractFishDomain(IC$SD)
   
   return(RCEF)
 }
 ```
 
+And apply it to one example file:
+
 ```{r}
+ICexample <- RstoxData::parseInterCatch("../data/intercatch_example.csv")
 RCEF <- convert(ICexample)
 ```
 
 
 ## Notes and Issues
 
-### Capitalization and naming
-I have spelled fields names in RCEF without capitalization. In the example files we have used a mix. Should decide on something.
+### Usage
+It is a bit unclear if usage is (can be) an activity variable when converting from InterCatch. It does not exist on the SD-table. Unsure if it is possible to have SI records that differ in Usage, but is equal for all the mandatory fields.
+
+### Length
+Did not test conversion for length groups. Is IC agnostic about which length measurement is used? If so, we will have to convert with parameterization, as is tentatively done for meanTotalLength.
+
+### Weight
+I think it is correct to map CATON from InterCatch to scientificWeight in CL, and OffLandings in InterCatch to officialWeight in CL. Need to check this.
 
 ### Area
 IC uses explicit declaration of the kind of area. CL uses "most detailed FAO area". If this is taken to mean "most detailed available in data", we can convert from IC as above. If it is taken to mean "FAO area with the highest precision defined" we may have to include one column for SubArea, one for Division, one for SubDivision and so on.
 
-## Weight
-I think it is correct to map CATON from InterCatch to scientificWeight in CL, and OffLandings in InterCatch to officialWeight in CL. Need to check this.
+### Capitalization and naming
+I have spelled fields names in RCEF without capitalization. In the example files we have used a mix. Should decide on something.
 
-### Columns needed from CL (already in draft)
-vesselFlagCountry
-speciesCode
-catchCategory
-quarter
-month
-officialWeight
+## Columns that need to be added
+The conversion excercies revealed some columns that need to be added to the RCEF draft.
 
 ### Columns needed from CL (not in draft)
 landingCategory
 scientificWeight
 
-### Columns needed from IC (already in draft)
-fleet
+### Columns needed from BiologicalMeasurments (not in draft)
+maturity
+
+### Columns needed from IC (not in draft)
+SamplesOrigin
 InfoFleet
 InfoStockCoordinator
 InfoGeneral
@@ -209,3 +391,25 @@ DepthRange
 Stock
 QualityFlag
 varCATON
+varNumLanded
+varWgtLanded
+varLgtLanded
+
+### Columns already included from CL (already in draft)
+vesselFlagCountry
+speciesCode
+catchCategory
+quarter
+month
+officialWeight
+
+### Columns already included from BiologicalMeasurments (already in draft)
+sex
+
+### Columns already included from IC (already in draft)
+fleet
+SampledCatch
+NumSamplesLngt
+NumLngtMeas
+NumSamplesAge
+NumAgeMeas
