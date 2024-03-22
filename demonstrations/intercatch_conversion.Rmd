@@ -1,0 +1,211 @@
+---
+title: "converting InterCatch exchange files"
+author: "Edvin Fuglebakk"
+date: "2024-03-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Convert ICEF to RCEF
+
+Define variables available for population and domain definitions (in RCEF nomenclature)
+```{r}
+POPULATION_VARIABLES <- c("vesselFlagCountry", "year", "speciesCode", "catchCategory")
+ACTIVITY_DOMAIN_VARIABLES <- c("quarter", "month", "fleet", "area", "usage")
+```
+
+```{r readIC}
+ICexample <- RstoxData::parseInterCatch("../data/intercatch_example.csv")
+```
+
+```{r}
+convertCode <- function(code, codemap){
+  if (all(code %in% names(codemap))){
+    return(codemap[code])
+  }
+  stop("Code not recognized.")
+}
+
+convertSpeciesCode <- function(FAOcode){
+  codeMap <- list(POK=126441, COD=126436, HAD=126437, HER=126417, MAC=127023)
+  return(convertCode(FAOcode, codeMap))
+}
+convertCatchCategory <- function(cgIC){
+  codeMap <- list(L="Lan", D="Dis")
+  return(convertCode(cgIC, codeMap))
+}
+convertUsage <- function(usageIC){
+  codeMap <- list(H="Huc", I="Ind")
+  return(convertCode(usageIC, codeMap))
+}
+
+convertMonth <- function(ICseasonType, ICseason){
+  month <- ICseason*as.numeric(NA)
+  month[ICseasonType=="Month"] <- ICseason[ICseasonType=="Month"]
+  return(month)
+}
+convertQuarter <- function(ICseasonType, ICseason){
+  quarter <- ICseason*as.numeric(NA)
+  quarter[ICseasonType=="Month"] <- (ICseason[ICseasonType=="Month"] %/% 4) +1
+  quarter[ICseasonType=="Quarter"] <- ICseason[ICseasonType=="Quarter"]
+  return(quarter)
+}
+convertArea <- function(ICareaType, area){
+  if (all(ICareaType %in% c("Div", "SubDiv", "SubArea", "Unit"))){
+    return(area)
+  }
+  else{
+    stop("Area not recognized.")
+  }
+}
+#convert weight to kg per CL def
+convertWeightKg <- function(unit, weight){
+  factors <- rep(as.numeric(NA), length(unit))
+  factors[unit=="kg"] <- 1
+  factors[unit=="t"] <- 1e3
+  return(weight*factors)
+}
+
+#' get activity domain from tables, after columns has been converted to RCEF.
+getActvityDomain <- function(tab){
+  tab <- data.table::as.data.table(tab)
+  return(apply(tab[,.SD,.SDcol=ACTIVITY_DOMAIN_VARIABLES[ACTIVITY_DOMAIN_VARIABLES %in% names(tab)]], 1, paste, collapse="/"))
+}
+```
+
+
+```{r}
+extractFishDomain <- function(){}
+```
+
+```{r}
+extractCatch <- function(SItable){
+  
+  #population variables
+  CATCH <- SItable[,c("Country", "Year")]
+  names(CATCH) <- c("vesselFlagCountry", "year")
+  CATCH$speciesCode <- convertSpeciesCode(SItable$Species)
+  CATCH$catchCategory <- convertCatchCategory(SItable$CatchCategory)
+  CATCH$quarter <- convertQuarter(SItable$SeasonType, SItable$Season)
+  CATCH$month <- convertMonth(SItable$SeasonType, SItable$Season)
+  CATCH$fleet <- SItable$Fleet
+  CATCH$area <- convertArea(SItable$AreaType, SItable$FishingArea)
+  if (!all(is.na(SItable$DepthRange))){
+    stop("Support for the field DepthRange not implemented.")
+  }
+  if (!all(is.na(SItable$Stock))){
+    stop("Support for the field Stock not implemented.")
+  }
+  if (!all(SItable$ReportingCategory=="R")){
+    stop("Conversion only defined for reporting category 'R'")
+  }
+  if (!all(is.na(SItable$DataToFrom))){
+    stop("Conversion only defined for reporting category 'R', DataToFrom should be NA.")
+  }
+  CATCH$landingCategory <- convertUsage(SItable$Usage)
+  if (!all(is.na(SItable$QualityFlag))){
+    stop("Support for the field QualityFlag is not implemented.")
+  }
+  CATCH$scientificWeight <- convertWeightKg(SItable$UnitCATON, SItable$CATON)
+  CATCH$officialWeight <- convertWeightKg(SItable$UnitCATON, SItable$Offlandings)
+  if (!all(is.na(SItable$varCATON))){
+    stop("Support for the field varCATON is not implemented.")
+  }
+  if ("infoFleet" %in% names(SItable)){
+    CATCH$infoFLeet <- SItable$infoFleet
+    if (all(nchar(CATCH$infoFleet)==0)){
+      CATCH$infoFleet <- as.character(NA)
+    }
+  }
+  if ("InfoStockCoordinator" %in% names(SItable)){
+    CATCH$InfoStockCoordinator <- SItable$InfoStockCoordinator    
+    if (all(nchar(CATCH$InfoStockCoordinator)==0)){
+      CATCH$InfoStockCoordinator <- as.character(NA)
+    }
+  }
+  if ("InfoGeneral" %in% names(SItable)){
+    CATCH$InfoGeneral <- SItable$InfoGeneral
+    if (all(nchar(CATCH$InfoGeneral)==0)){
+      CATCH$InfoGeneral <- as.character(NA)
+    }
+  }
+  
+  for (col in names(CATCH)){
+    if (all(is.na(CATCH[[col]]))){
+      CATCH[[col]] <- NULL
+    }
+  }
+  
+  CATCH$activityDomain <- getActvityDomain(CATCH)
+
+  return(CATCH)
+  
+}
+```
+
+```{r}
+extractEffort <- function(){}
+```
+
+```{r}
+extractEstimates <- function(){
+  stop("Handle samples origin from SI table.")
+  
+}
+```
+
+```{r}
+#' Convert IC data to RCEF
+convert <- function(IC){
+  RCEF <- list()
+  RCEF$CATCH <- extractCatch(IC$SI)
+  RCEF$ESTIMATES <- extractEstimates(IC$SD)
+  RCEF$EFFORT <- extractEffort(IC$SI)
+  RCEF$FISHDOMAIN <- extractFishDomain(IC$SD)
+  
+  return(RCEF)
+}
+```
+
+```{r}
+RCEF <- convert(ICexample)
+```
+
+
+## Notes and Issues
+
+### Capitalization and naming
+I have spelled fields names in RCEF without capitalization. In the example files we have used a mix. Should decide on something.
+
+### Area
+IC uses explicit declaration of the kind of area. CL uses "most detailed FAO area". If this is taken to mean "most detailed available in data", we can convert from IC as above. If it is taken to mean "FAO area with the highest precision defined" we may have to include one column for SubArea, one for Division, one for SubDivision and so on.
+
+## Weight
+I think it is correct to map CATON from InterCatch to scientificWeight in CL, and OffLandings in InterCatch to officialWeight in CL. Need to check this.
+
+### Columns needed from CL (already in draft)
+vesselFlagCountry
+speciesCode
+catchCategory
+quarter
+month
+officialWeight
+
+### Columns needed from CL (not in draft)
+landingCategory
+scientificWeight
+
+### Columns needed from IC (already in draft)
+fleet
+InfoFleet
+InfoStockCoordinator
+InfoGeneral
+
+### Columns not included, with unclear status in IC (not in draft)
+DepthRange
+Stock
+QualityFlag
+varCATON
