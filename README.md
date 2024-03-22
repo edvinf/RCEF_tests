@@ -15,3 +15,7 @@ The directory 'demonstrations' contain code demonstrating that the format can be
 The directory 'reports' contain generated reports from other directories like 'demonstrations'. While these may be html formatted, your browser may not render them when clicked on github. Download and open to view.
 
 Run the script generate_reports.R generate reports.
+
+## Dependencies
+stock_coordination.Rmd uses data.table and ggplot2 (cran)
+intercatch_conversion.Rmd uses RstoxData 1.10.2-9005 (https://github.com/StoXProject/RstoxData)

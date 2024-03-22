@@ -350,6 +350,10 @@ And apply it to one example file:
 ```{r}
 ICexample <- RstoxData::parseInterCatch("../data/intercatch_example.csv")
 RCEF <- convert(ICexample)
+RCEF$EFFORT
+RCEF$CATCH
+RCEF$FISHDOMAIN
+RCEF$ESTIMATES
 ```
 
 
