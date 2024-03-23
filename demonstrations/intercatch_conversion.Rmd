@@ -377,6 +377,10 @@ I think it is correct to map CATON from InterCatch to scientificWeight in CL, an
 ### Area
 IC uses explicit declaration of the kind of area. CL uses "most detailed FAO area". If this is taken to mean "most detailed available in data", we can convert from IC as above. If it is taken to mean "FAO area with the highest precision defined" we may have to include one column for SubArea, one for Division, one for SubDivision and so on.
 
+### Info fields
+Is it necessary to support info fields for InterCatch compatibility (InfoFleet, InfoStockCoordinator, InfoGeneral
+). And is it OK to redesign a bit. We could for instance make one comment field, and populate it with a paste of all these fields when converting. They are free-text fields.
+
 ### Capitalization and naming
 I have spelled fields names in RCEF without capitalization. In the example files we have used a mix. Should decide on something.
 
