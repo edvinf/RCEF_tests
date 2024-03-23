@@ -356,6 +356,12 @@ RCEF$FISHDOMAIN
 RCEF$ESTIMATES
 ```
 
+save result so that it can be tested in the stock coordination script:
+
+```{r}
+saveRDS(RCEF, "../data/ICconvertedEstimates.rds")
+```
+
 
 ## Notes and Issues
 
@@ -378,42 +384,49 @@ I have spelled fields names in RCEF without capitalization. In the example files
 The conversion excercies revealed some columns that need to be added to the RCEF draft.
 
 ### Columns needed from CL (not in draft)
-landingCategory
-scientificWeight
+
+* landingCategory
+* scientificWeight
 
 ### Columns needed from BiologicalMeasurments (not in draft)
-maturity
+
+* maturity
 
 ### Columns needed from IC (not in draft)
-SamplesOrigin
-InfoFleet
-InfoStockCoordinator
-InfoGeneral
+
+* SamplesOrigin
+* InfoFleet
+* InfoStockCoordinator
+* InfoGeneral
 
 ### Columns not included, with unclear status in IC (not in draft)
-DepthRange
-Stock
-QualityFlag
-varCATON
-varNumLanded
-varWgtLanded
-varLgtLanded
+
+* DepthRange
+* Stock
+* QualityFlag
+* varCATON
+* varNumLanded
+* varWgtLanded
+* varLgtLanded
 
 ### Columns already included from CL (already in draft)
-vesselFlagCountry
-speciesCode
-catchCategory
-quarter
-month
-officialWeight
+
+* vesselFlagCountry
+* speciesCode
+* catchCategory
+* quarter
+* month
+* officialWeight
 
 ### Columns already included from BiologicalMeasurments (already in draft)
-sex
+
+* sex
 
 ### Columns already included from IC (already in draft)
-fleet
-SampledCatch
-NumSamplesLngt
-NumLngtMeas
-NumSamplesAge
-NumAgeMeas
+
+* fleet
+* SampledCatch
+* NumSamplesLngt
+* NumLngtMeas
+* NumSamplesAge
+* NumAgeMeas

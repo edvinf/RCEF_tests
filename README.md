@@ -9,6 +9,7 @@ The directory 'data' contains estimates formatted in candidate formats as rds fi
 * estimates_caa.rds estimates of Norwegian harvest of North Sea Herring in 2022 for activity domain corresponding to gears
 * estimates_caa.rds estimates of Norwegian harvest of North Sea Herring in 2022 for activity domain corresponding to gears, with estimates only provided for some gears
 The NS herring estimates and catch statistics does not cover the entire fishery, but only vessels larger than 15 m. The ESTIMATES and CATCH table is attempted to be realistic, but not official. The EFFORT table is not realistic.
+* ICconvertedEstimates.rds minimal example converted from InterCatch with the script intercatch_conversion.Rmd
 
 The directory 'demonstrations' contain code demonstrating that the format can be used for various stock-coordination purposes.
 

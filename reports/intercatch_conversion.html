@@ -812,6 +812,9 @@ RCEF$EFFORT</code></pre>
 ## 19:          NA            NA         NA
 ## 20:          NA            NA         NA
 ##     numLngtMeas numSamplesAge numAgeMeas</code></pre>
+<p>save result so that it can be tested in the stock coordination
+script:</p>
+<pre class="r"><code>saveRDS(RCEF, &quot;../data/ICconvertedEstimates.rds&quot;)</code></pre>
 </div>
 <div id="notes-and-issues" class="section level2">
 <h2>Notes and Issues</h2>
@@ -854,35 +857,66 @@ example files we have used a mix. Should decide on something.</p>
 to the RCEF draft.</p>
 <div id="columns-needed-from-cl-not-in-draft" class="section level3">
 <h3>Columns needed from CL (not in draft)</h3>
-<p>landingCategory scientificWeight</p>
+<ul>
+<li>landingCategory</li>
+<li>scientificWeight</li>
+</ul>
 </div>
 <div id="columns-needed-from-biologicalmeasurments-not-in-draft" class="section level3">
 <h3>Columns needed from BiologicalMeasurments (not in draft)</h3>
-<p>maturity</p>
+<ul>
+<li>maturity</li>
+</ul>
 </div>
 <div id="columns-needed-from-ic-not-in-draft" class="section level3">
 <h3>Columns needed from IC (not in draft)</h3>
-<p>SamplesOrigin InfoFleet InfoStockCoordinator InfoGeneral</p>
+<ul>
+<li>SamplesOrigin</li>
+<li>InfoFleet</li>
+<li>InfoStockCoordinator</li>
+<li>InfoGeneral</li>
+</ul>
 </div>
 <div id="columns-not-included-with-unclear-status-in-ic-not-in-draft" class="section level3">
 <h3>Columns not included, with unclear status in IC (not in draft)</h3>
-<p>DepthRange Stock QualityFlag varCATON varNumLanded varWgtLanded
-varLgtLanded</p>
+<ul>
+<li>DepthRange</li>
+<li>Stock</li>
+<li>QualityFlag</li>
+<li>varCATON</li>
+<li>varNumLanded</li>
+<li>varWgtLanded</li>
+<li>varLgtLanded</li>
+</ul>
 </div>
 <div id="columns-already-included-from-cl-already-in-draft" class="section level3">
 <h3>Columns already included from CL (already in draft)</h3>
-<p>vesselFlagCountry speciesCode catchCategory quarter month
-officialWeight</p>
+<ul>
+<li>vesselFlagCountry</li>
+<li>speciesCode</li>
+<li>catchCategory</li>
+<li>quarter</li>
+<li>month</li>
+<li>officialWeight</li>
+</ul>
 </div>
 <div id="columns-already-included-from-biologicalmeasurments-already-in-draft" class="section level3">
 <h3>Columns already included from BiologicalMeasurments (already in
 draft)</h3>
-<p>sex</p>
+<ul>
+<li>sex</li>
+</ul>
 </div>
 <div id="columns-already-included-from-ic-already-in-draft" class="section level3">
 <h3>Columns already included from IC (already in draft)</h3>
-<p>fleet SampledCatch NumSamplesLngt NumLngtMeas NumSamplesAge
-NumAgeMeas</p>
+<ul>
+<li>fleet</li>
+<li>SampledCatch</li>
+<li>NumSamplesLngt</li>
+<li>NumLngtMeas</li>
+<li>NumSamplesAge</li>
+<li>NumAgeMeas</li>
+</ul>
 </div>
 </div>
 </div>

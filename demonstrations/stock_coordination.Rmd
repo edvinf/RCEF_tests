@@ -16,7 +16,7 @@ We will define some preliminary vocabularies for the columns that are valid in t
 
 ```{r format}
 POPULATION_VARIABLES <- c("vesselFlagCountry", "year", "catchCategory", "speciesCode")
-ACTIVITY_DOMAIN_VARIABLES <- c("Quarter",	"Month","stockArea",	"area",	"metier6",	"Fleet")
+ACTIVITY_DOMAIN_VARIABLES <- c("quarter",	"month","stockArea",	"area",	"metier6",	"Fleet")
 FISH_DOMAIN_VARIABLES <- c("MinAge",	"MaxAge", "Sex")
 ESTIMATES_VALUE_VARIABLES <- c("totalNumber", "totalWeightLive", "varTotalNumber", "varTotalWeight")
 SAMPLE_DESCRIPTION_VARIABLES <- c("numSamplesLength", "numLngMeas", "numSamplesAge", "sampledCatch")
@@ -93,7 +93,15 @@ aggregateActivityDomains <- function(RCEF, desiredDomains){
       aggregated[[e]] <- as.numeric(NA)
     }
   }
+  #
   # Compute aggregated mean weight
+  # 
+  if (!("varMeanWeightLive" %in% names(estimates))){
+    estimates$varMeanWeightLive <- as.numeric(NA)
+  }
+  if (!("meanWeightLive" %in% names(estimates))){
+    estimates$meanWeightLive <- as.numeric(NA)
+  }
   agg <- estimates[,list(meanWeightLive = sum(meanWeightLive*totalNumber)/sum(totalNumber), varMeanWeightLive = sum(varMeanWeightLive * (totalNumber/sum(totalNumber))**2)), by=c("fishDomain", "activityDomain", POPULATION_VARIABLES)]
   if (is.null(aggregated)){
         aggregated <- agg
@@ -138,7 +146,8 @@ If estimates cannot be provided for a certain activity domain, or they are provi
 #' @param RCEF
 #' @param imputeTo The activity domain to impute to
 #' @param imputeFrom The activity domain to impute from
-imputeMeanWeight <- function(RCEF, imputeTo, imputeFrom){
+#' @param totalWeightField Indicate which field to use for totalWeight. 'official' or 'scientific'
+imputeMeanWeight <- function(RCEF, imputeTo, imputeFrom, totalWeightField){
   
   stopifnot(imputeFrom %in% RCEF$CATCH$activityDomain)
   stopifnot(imputeFrom %in% RCEF$ESTIMATES$activityDomain)
@@ -159,7 +168,16 @@ imputeMeanWeight <- function(RCEF, imputeTo, imputeFrom){
     }
   }
   estimatesImputed$activityDomain <- imputeTo
-  totalWeight <- sum(RCEF$CATCH$officialWeight[RCEF$CATCH$activityDomain == imputeTo])*1000
+  
+  if (totalWeightField=="official"){
+    totalWeight <- sum(RCEF$CATCH$officialWeight[RCEF$CATCH$activityDomain == imputeTo])*1000    
+  }
+  else if (totalWeightField=="scientific"){
+    totalWeight <- sum(RCEF$CATCH$scientificWeight[RCEF$CATCH$activityDomain == imputeTo])*1000    
+  }
+  else{
+    stop("Does not recognize option for totalWeightField.")
+  }
   
   estimatesImputed$totalNumber <- totalWeight * estimatesImputed$fraction / estimatesImputed$meanWeightLive
   estimatesImputed$varTotalNumber <- estimatesImputed$varFraction * (totalWeight / estimatesImputed$meanWeightLive)**2
@@ -181,8 +199,8 @@ Applying this to the example file that is missing estimate for a domain, and agg
 ```{r imputeByGear}
 #impute for missing domains
 partialDomainEstimates <- readRDS("../data/estimates_gear_caa_missing_domains.rds")
-imputedDomainEstimates <- imputeMeanWeight(partialDomainEstimates, "NSHER/OTB", "NSHER/OTM")
-imputedDomainEstimates <- imputeMeanWeight(imputedDomainEstimates, "NSHER/PS1", "NSHER/OTM")
+imputedDomainEstimates <- imputeMeanWeight(partialDomainEstimates, "NSHER/OTB", "NSHER/OTM", "official")
+imputedDomainEstimates <- imputeMeanWeight(imputedDomainEstimates, "NSHER/PS1", "NSHER/OTM", "official")
 
 #add up to grand total
 desiredDomains <- data.table::data.table(activityDomain="NSHER", metier6=c("OTB_SPF_>0_0_0_all","OTM_SPF_>0_0_0_all","PS1_SPF_>0_0_0_all"))
@@ -211,6 +229,25 @@ ggplot2::ggplot(comparison) +
   ggplot2::xlab("Age group")
 
 ```
+## Test IC converted estimates
+
+Load and aggregate example data converted from InterCatch
+
+```{r}
+ICconverted <- readRDS("../data/ICconvertedEstimates.rds")
+desiredDomains <- data.table::data.table(activityDomain=c("Q1","Q2","Q3","Q4"), quarter=c(1,2,3,4))
+ICaggregated <- aggregateActivityDomains(ICconverted, desiredDomains)
+ICaggregated$ESTIMATES
+```
+
+Check that aggregated sums to same number as disaggregated
+
+```{r}
+nrow(ICconverted$ESTIMATES)
+nrow(ICaggregated$ESTIMATES)
+sum(ICconverted$ESTIMATES$totalNumber) - sum(ICaggregated$ESTIMATES$totalNumber)
+```
+
 
 ## Issues
 
