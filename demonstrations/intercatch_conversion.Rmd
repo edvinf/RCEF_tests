@@ -372,7 +372,7 @@ It is a bit unclear if usage is (can be) an activity variable when converting fr
 Did not test conversion for length groups. Is IC agnostic about which length measurement is used? If so, we will have to convert with parameterization, as is tentatively done for meanTotalLength.
 
 ### Weight
-I think it is correct to map CATON from InterCatch to scientificWeight in CL, and OffLandings in InterCatch to officialWeight in CL. Need to check this.
+I think it is correct to map CATON from InterCatch to scientificWeight in CL, and OffLandings in InterCatch to officialWeight in CL. Need to check this, and carefully consider how we deal with ReportingCategory. Right now only conversion with category 'R' is supported, which may be simplisitic. ICES secretariat has informed us that the categories 'N', 'M' and 'A' are also used, and are proper population variables. Need to consider how they are captured in the concept 'ScientificWeight'.
 
 ### Area
 IC uses explicit declaration of the kind of area. CL uses "most detailed FAO area". If this is taken to mean "most detailed available in data", we can convert from IC as above. If it is taken to mean "FAO area with the highest precision defined" we may have to include one column for SubArea, one for Division, one for SubDivision and so on.
@@ -403,8 +403,8 @@ The conversion excercies revealed some columns that need to be added to the RCEF
 * InfoStockCoordinator
 * InfoGeneral
 
-### Columns not included, with unclear status in IC (not in draft)
-
+### Columns not included, with reserved status in IC (not in draft)
+ICES secretariat has clarified that we can ignore these columns wrp to InterCatch compatibility.
 * DepthRange
 * Stock
 * QualityFlag

@@ -486,81 +486,46 @@ desiredDomains &lt;- data.table::data.table(activityDomain=&quot;NSHER&quot;, me
 totalAggregatedEstimates &lt;- aggregateActivityDomains(domainEstimates, desiredDomains)
 totalAggregatedEstimates$ESTIMATES</code></pre>
 <pre><code>## Key: &lt;fishDomain, activityDomain, vesselFlagCountry, year, catchCategory, speciesCode&gt;
-##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber
-##         &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;num&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;          &lt;num&gt;
-##  1:      Age 1          NSHER                NO  2022           Lan      126417    20320134   1.894270e+14
-##  2:    Age 10+          NSHER                NO  2022           Lan      126417    12727096   8.234444e+12
-##  3:      Age 2          NSHER                NO  2022           Lan      126417   524320381   4.659350e+15
-##  4:      Age 3          NSHER                NO  2022           Lan      126417    96257127   3.199446e+14
-##  5:      Age 4          NSHER                NO  2022           Lan      126417    35795382   6.175973e+13
-##  6:      Age 5          NSHER                NO  2022           Lan      126417    24878722   3.561279e+13
-##  7:      Age 6          NSHER                NO  2022           Lan      126417    83139223   4.243558e+14
-##  8:      Age 7          NSHER                NO  2022           Lan      126417    12071000   8.098278e+12
-##  9:      Age 8          NSHER                NO  2022           Lan      126417    40723167   1.018073e+14
-## 10:      Age 9          NSHER                NO  2022           Lan      126417    17214698   1.668556e+13
-##     numSamplesAge meanWeightLive varMeanWeightLive
-##             &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
-##  1:            NA            NaN               NaN
-##  2:            NA       232.5267         2709.5141
-##  3:            NA       128.3360          259.6219
-##  4:            NA       146.9910          699.6109
-##  5:            NA       175.6022         1528.1842
-##  6:            NA       200.5734         2362.2707
-##  7:            NA       248.9347         4177.7185
-##  8:            NA       221.0508         2641.4473
-##  9:            NA       222.5261         2937.2038
-## 10:            NA       224.4955         3006.8459</code></pre>
+##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber numSamplesAge meanWeightLive varMeanWeightLive
+##         &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;num&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;          &lt;num&gt;         &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
+##  1:      Age 1          NSHER                NO  2022           Lan      126417    20320134   1.894270e+14            NA            NaN               NaN
+##  2:    Age 10+          NSHER                NO  2022           Lan      126417    12727096   8.234444e+12            NA       232.5267         2709.5141
+##  3:      Age 2          NSHER                NO  2022           Lan      126417   524320381   4.659350e+15            NA       128.3360          259.6219
+##  4:      Age 3          NSHER                NO  2022           Lan      126417    96257127   3.199446e+14            NA       146.9910          699.6109
+##  5:      Age 4          NSHER                NO  2022           Lan      126417    35795382   6.175973e+13            NA       175.6022         1528.1842
+##  6:      Age 5          NSHER                NO  2022           Lan      126417    24878722   3.561279e+13            NA       200.5734         2362.2707
+##  7:      Age 6          NSHER                NO  2022           Lan      126417    83139223   4.243558e+14            NA       248.9347         4177.7185
+##  8:      Age 7          NSHER                NO  2022           Lan      126417    12071000   8.098278e+12            NA       221.0508         2641.4473
+##  9:      Age 8          NSHER                NO  2022           Lan      126417    40723167   1.018073e+14            NA       222.5261         2937.2038
+## 10:      Age 9          NSHER                NO  2022           Lan      126417    17214698   1.668556e+13            NA       224.4955         3006.8459</code></pre>
 <p>Similarly, grouping only two gears:</p>
 <pre class="r"><code>desiredDomains &lt;- data.table::data.table(activityDomain=c(&quot;OT&quot;, &quot;OT&quot;, &quot;PS&quot;), metier6=c(&quot;OTB_SPF_&gt;0_0_0_all&quot;,&quot;OTM_SPF_&gt;0_0_0_all&quot;,&quot;PS1_SPF_&gt;0_0_0_all&quot;))
 aggregatedEstimates &lt;- aggregateActivityDomains(domainEstimates, desiredDomains)
 aggregatedEstimates$ESTIMATES</code></pre>
 <pre><code>## Key: &lt;fishDomain, activityDomain, vesselFlagCountry, year, catchCategory, speciesCode&gt;
-##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber
-##         &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;num&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;          &lt;num&gt;
-##  1:      Age 1             OT                NO  2022           Lan      126417    20320134   1.894270e+14
-##  2:      Age 1             PS                NO  2022           Lan      126417           0   0.000000e+00
-##  3:    Age 10+             OT                NO  2022           Lan      126417    10158288   6.246362e+12
-##  4:    Age 10+             PS                NO  2022           Lan      126417     2568808   1.988082e+12
-##  5:      Age 2             OT                NO  2022           Lan      126417   270865568   3.476731e+15
-##  6:      Age 2             PS                NO  2022           Lan      126417   253454813   1.182619e+15
-##  7:      Age 3             OT                NO  2022           Lan      126417    43280096   6.398537e+13
-##  8:      Age 3             PS                NO  2022           Lan      126417    52977032   2.559592e+14
-##  9:      Age 4             OT                NO  2022           Lan      126417    25242750   4.785620e+13
-## 10:      Age 4             PS                NO  2022           Lan      126417    10552632   1.390353e+13
-## 11:      Age 5             OT                NO  2022           Lan      126417    20388590   3.268938e+13
-## 12:      Age 5             PS                NO  2022           Lan      126417     4490132   2.923407e+12
-## 13:      Age 6             OT                NO  2022           Lan      126417    59845680   2.938636e+14
-## 14:      Age 6             PS                NO  2022           Lan      126417    23293543   1.304921e+14
-## 15:      Age 7             OT                NO  2022           Lan      126417     6601559   3.753397e+12
-## 16:      Age 7             PS                NO  2022           Lan      126417     5469441   4.344881e+12
-## 17:      Age 8             OT                NO  2022           Lan      126417    34900955   9.188608e+13
-## 18:      Age 8             PS                NO  2022           Lan      126417     5822211   9.921249e+12
-## 19:      Age 9             OT                NO  2022           Lan      126417    14297349   1.408816e+13
-## 20:      Age 9             PS                NO  2022           Lan      126417     2917349   2.597400e+12
-##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber
-##     numSamplesAge meanWeightLive varMeanWeightLive
-##             &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
-##  1:            NA            NaN               NaN
-##  2:            NA            NaN               NaN
-##  3:            NA       233.9531         3253.1182
-##  4:            NA       226.8861        15638.1149
-##  5:            NA       125.1299          687.4903
-##  6:            NA       131.7625          325.8631
-##  7:            NA       158.2323         1100.2614
-##  8:            NA       137.8073         1575.3154
-##  9:            NA       185.9122         2511.8829
-## 10:            NA       150.9398         3210.4912
-## 11:            NA       207.0525         3303.6757
-## 12:            NA       171.1532         4404.9359
-## 13:            NA       250.5850         5498.3083
-## 14:            NA       244.6946        16927.5664
-## 15:            NA       232.2309         4796.6559
-## 16:            NA       207.5567         5878.0868
-## 17:            NA       226.3358         3677.3531
-## 18:            NA       199.6891        11554.9399
-## 19:            NA       229.2742         3848.9077
-## 20:            NA       201.0759        12254.2378
-##     numSamplesAge meanWeightLive varMeanWeightLive</code></pre>
+##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber numSamplesAge meanWeightLive varMeanWeightLive
+##         &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;num&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;          &lt;num&gt;         &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
+##  1:      Age 1             OT                NO  2022           Lan      126417    20320134   1.894270e+14            NA            NaN               NaN
+##  2:      Age 1             PS                NO  2022           Lan      126417           0   0.000000e+00            NA            NaN               NaN
+##  3:    Age 10+             OT                NO  2022           Lan      126417    10158288   6.246362e+12            NA       233.9531         3253.1182
+##  4:    Age 10+             PS                NO  2022           Lan      126417     2568808   1.988082e+12            NA       226.8861        15638.1149
+##  5:      Age 2             OT                NO  2022           Lan      126417   270865568   3.476731e+15            NA       125.1299          687.4903
+##  6:      Age 2             PS                NO  2022           Lan      126417   253454813   1.182619e+15            NA       131.7625          325.8631
+##  7:      Age 3             OT                NO  2022           Lan      126417    43280096   6.398537e+13            NA       158.2323         1100.2614
+##  8:      Age 3             PS                NO  2022           Lan      126417    52977032   2.559592e+14            NA       137.8073         1575.3154
+##  9:      Age 4             OT                NO  2022           Lan      126417    25242750   4.785620e+13            NA       185.9122         2511.8829
+## 10:      Age 4             PS                NO  2022           Lan      126417    10552632   1.390353e+13            NA       150.9398         3210.4912
+## 11:      Age 5             OT                NO  2022           Lan      126417    20388590   3.268938e+13            NA       207.0525         3303.6757
+## 12:      Age 5             PS                NO  2022           Lan      126417     4490132   2.923407e+12            NA       171.1532         4404.9359
+## 13:      Age 6             OT                NO  2022           Lan      126417    59845680   2.938636e+14            NA       250.5850         5498.3083
+## 14:      Age 6             PS                NO  2022           Lan      126417    23293543   1.304921e+14            NA       244.6946        16927.5664
+## 15:      Age 7             OT                NO  2022           Lan      126417     6601559   3.753397e+12            NA       232.2309         4796.6559
+## 16:      Age 7             PS                NO  2022           Lan      126417     5469441   4.344881e+12            NA       207.5567         5878.0868
+## 17:      Age 8             OT                NO  2022           Lan      126417    34900955   9.188608e+13            NA       226.3358         3677.3531
+## 18:      Age 8             PS                NO  2022           Lan      126417     5822211   9.921249e+12            NA       199.6891        11554.9399
+## 19:      Age 9             OT                NO  2022           Lan      126417    14297349   1.408816e+13            NA       229.2742         3848.9077
+## 20:      Age 9             PS                NO  2022           Lan      126417     2917349   2.597400e+12            NA       201.0759        12254.2378
+##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber numSamplesAge meanWeightLive varMeanWeightLive</code></pre>
 </div>
 <div id="imputing-mean-weight" class="section level2">
 <h2>Imputing mean weight</h2>
@@ -631,98 +596,53 @@ desiredDomains &lt;- data.table::data.table(activityDomain=&quot;NSHER&quot;, me
 imputedTotalEstimates &lt;- aggregateActivityDomains(imputedDomainEstimates, desiredDomains)
 
 imputedDomainEstimates$ESTIMATES</code></pre>
-<pre><code>##     vesselFlagCountry  year speciesCode catchCategory activityDomain fishDomain totalNumber varTotalNumber
-##                &lt;char&gt; &lt;num&gt;       &lt;num&gt;        &lt;char&gt;         &lt;char&gt;     &lt;char&gt;       &lt;num&gt;          &lt;num&gt;
-##  1:                NO  2022      126417           Lan      NSHER/OTM      Age 1  20320134.1   1.894270e+14
-##  2:                NO  2022      126417           Lan      NSHER/OTM    Age 10+  10106822.2   6.245010e+12
-##  3:                NO  2022      126417           Lan      NSHER/OTM      Age 2 262110032.5   3.472912e+15
-##  4:                NO  2022      126417           Lan      NSHER/OTM      Age 3  40468472.1   6.369860e+13
-##  5:                NO  2022      126417           Lan      NSHER/OTM      Age 4  23896663.5   4.757203e+13
-##  6:                NO  2022      126417           Lan      NSHER/OTM      Age 5  19742940.3   3.266689e+13
-##  7:                NO  2022      126417           Lan      NSHER/OTM      Age 6  58200274.1   2.930299e+14
-##  8:                NO  2022      126417           Lan      NSHER/OTM      Age 7   6384481.7   3.747677e+12
-##  9:                NO  2022      126417           Lan      NSHER/OTM      Age 8  34580946.0   9.186653e+13
-## 10:                NO  2022      126417           Lan      NSHER/OTM      Age 9  14145245.1   1.407635e+13
-## 11:                NO  2022      126417           Lan      NSHER/OTB      Age 1    632962.0   1.837993e+11
-## 12:                NO  2022      126417           Lan      NSHER/OTB    Age 10+    314822.4   6.059478e+09
-## 13:                NO  2022      126417           Lan      NSHER/OTB      Age 2   8164595.8   3.369736e+12
-## 14:                NO  2022      126417           Lan      NSHER/OTB      Age 3   1260572.6   6.180619e+10
-## 15:                NO  2022      126417           Lan      NSHER/OTB      Age 4    744369.1   4.615873e+10
-## 16:                NO  2022      126417           Lan      NSHER/OTB      Age 5    614982.7   3.169639e+10
-## 17:                NO  2022      126417           Lan      NSHER/OTB      Age 6   1812909.3   2.843243e+11
-## 18:                NO  2022      126417           Lan      NSHER/OTB      Age 7    198873.4   3.636338e+09
-## 19:                NO  2022      126417           Lan      NSHER/OTB      Age 8   1077179.1   8.913729e+10
-## 20:                NO  2022      126417           Lan      NSHER/OTB      Age 9    440617.3   1.365816e+10
-## 21:                NO  2022      126417           Lan      NSHER/PS1      Age 1  13524121.0   8.390866e+13
-## 22:                NO  2022      126417           Lan      NSHER/PS1    Age 10+   6726623.2   2.766292e+12
-## 23:                NO  2022      126417           Lan      NSHER/PS1      Age 2 174448050.4   1.538363e+15
-## 24:                NO  2022      126417           Lan      NSHER/PS1      Age 3  26933902.5   2.821596e+13
-## 25:                NO  2022      126417           Lan      NSHER/PS1      Age 4  15904489.9   2.107253e+13
-## 26:                NO  2022      126417           Lan      NSHER/PS1      Age 5  13139968.0   1.447014e+13
-## 27:                NO  2022      126417           Lan      NSHER/PS1      Age 6  38735351.9   1.298007e+14
-## 28:                NO  2022      126417           Lan      NSHER/PS1      Age 7   4249209.3   1.660073e+12
-## 29:                NO  2022      126417           Lan      NSHER/PS1      Age 8  23015443.4   4.069324e+13
-## 30:                NO  2022      126417           Lan      NSHER/PS1      Age 9   9414406.7   6.235268e+12
-##     vesselFlagCountry  year speciesCode catchCategory activityDomain fishDomain totalNumber varTotalNumber
-##     meanWeightLive varMeanWeightLive numSamplesAge
-##              &lt;num&gt;             &lt;num&gt;         &lt;num&gt;
-##  1:       57.73038         1391.8360            18
-##  2:      234.12093         3285.7988            18
-##  3:      124.86937          733.2966            18
-##  4:      159.45356         1255.1673            18
-##  5:      187.64361         2791.1048            18
-##  6:      207.44655         3521.4818            18
-##  7:      250.86857         5796.9245            18
-##  8:      232.99002         5122.7151            18
-##  9:      226.62518         3745.1506            18
-## 10:      229.19468         3928.8212            18
-## 11:       57.73038         1391.8360             0
-## 12:      234.12093         3285.7988             0
-## 13:      124.86937          733.2966             0
-## 14:      159.45356         1255.1673             0
-## 15:      187.64361         2791.1048             0
-## 16:      207.44655         3521.4818             0
-## 17:      250.86857         5796.9245             0
-## 18:      232.99002         5122.7151             0
-## 19:      226.62518         3745.1506             0
-## 20:      229.19468         3928.8212             0
-## 21:       57.73038         1391.8360             0
-## 22:      234.12093         3285.7988             0
-## 23:      124.86937          733.2966             0
-## 24:      159.45356         1255.1673             0
-## 25:      187.64361         2791.1048             0
-## 26:      207.44655         3521.4818             0
-## 27:      250.86857         5796.9245             0
-## 28:      232.99002         5122.7151             0
-## 29:      226.62518         3745.1506             0
-## 30:      229.19468         3928.8212             0
-##     meanWeightLive varMeanWeightLive numSamplesAge</code></pre>
+<pre><code>##     vesselFlagCountry  year speciesCode catchCategory activityDomain fishDomain totalNumber varTotalNumber meanWeightLive varMeanWeightLive numSamplesAge
+##                &lt;char&gt; &lt;num&gt;       &lt;num&gt;        &lt;char&gt;         &lt;char&gt;     &lt;char&gt;       &lt;num&gt;          &lt;num&gt;          &lt;num&gt;             &lt;num&gt;         &lt;num&gt;
+##  1:                NO  2022      126417           Lan      NSHER/OTM      Age 1  20320134.1   1.894270e+14       57.73038         1391.8360            18
+##  2:                NO  2022      126417           Lan      NSHER/OTM    Age 10+  10106822.2   6.245010e+12      234.12093         3285.7988            18
+##  3:                NO  2022      126417           Lan      NSHER/OTM      Age 2 262110032.5   3.472912e+15      124.86937          733.2966            18
+##  4:                NO  2022      126417           Lan      NSHER/OTM      Age 3  40468472.1   6.369860e+13      159.45356         1255.1673            18
+##  5:                NO  2022      126417           Lan      NSHER/OTM      Age 4  23896663.5   4.757203e+13      187.64361         2791.1048            18
+##  6:                NO  2022      126417           Lan      NSHER/OTM      Age 5  19742940.3   3.266689e+13      207.44655         3521.4818            18
+##  7:                NO  2022      126417           Lan      NSHER/OTM      Age 6  58200274.1   2.930299e+14      250.86857         5796.9245            18
+##  8:                NO  2022      126417           Lan      NSHER/OTM      Age 7   6384481.7   3.747677e+12      232.99002         5122.7151            18
+##  9:                NO  2022      126417           Lan      NSHER/OTM      Age 8  34580946.0   9.186653e+13      226.62518         3745.1506            18
+## 10:                NO  2022      126417           Lan      NSHER/OTM      Age 9  14145245.1   1.407635e+13      229.19468         3928.8212            18
+## 11:                NO  2022      126417           Lan      NSHER/OTB      Age 1    632962.0   1.837993e+11       57.73038         1391.8360             0
+## 12:                NO  2022      126417           Lan      NSHER/OTB    Age 10+    314822.4   6.059478e+09      234.12093         3285.7988             0
+## 13:                NO  2022      126417           Lan      NSHER/OTB      Age 2   8164595.8   3.369736e+12      124.86937          733.2966             0
+## 14:                NO  2022      126417           Lan      NSHER/OTB      Age 3   1260572.6   6.180619e+10      159.45356         1255.1673             0
+## 15:                NO  2022      126417           Lan      NSHER/OTB      Age 4    744369.1   4.615873e+10      187.64361         2791.1048             0
+## 16:                NO  2022      126417           Lan      NSHER/OTB      Age 5    614982.7   3.169639e+10      207.44655         3521.4818             0
+## 17:                NO  2022      126417           Lan      NSHER/OTB      Age 6   1812909.3   2.843243e+11      250.86857         5796.9245             0
+## 18:                NO  2022      126417           Lan      NSHER/OTB      Age 7    198873.4   3.636338e+09      232.99002         5122.7151             0
+## 19:                NO  2022      126417           Lan      NSHER/OTB      Age 8   1077179.1   8.913729e+10      226.62518         3745.1506             0
+## 20:                NO  2022      126417           Lan      NSHER/OTB      Age 9    440617.3   1.365816e+10      229.19468         3928.8212             0
+## 21:                NO  2022      126417           Lan      NSHER/PS1      Age 1  13524121.0   8.390866e+13       57.73038         1391.8360             0
+## 22:                NO  2022      126417           Lan      NSHER/PS1    Age 10+   6726623.2   2.766292e+12      234.12093         3285.7988             0
+## 23:                NO  2022      126417           Lan      NSHER/PS1      Age 2 174448050.4   1.538363e+15      124.86937          733.2966             0
+## 24:                NO  2022      126417           Lan      NSHER/PS1      Age 3  26933902.5   2.821596e+13      159.45356         1255.1673             0
+## 25:                NO  2022      126417           Lan      NSHER/PS1      Age 4  15904489.9   2.107253e+13      187.64361         2791.1048             0
+## 26:                NO  2022      126417           Lan      NSHER/PS1      Age 5  13139968.0   1.447014e+13      207.44655         3521.4818             0
+## 27:                NO  2022      126417           Lan      NSHER/PS1      Age 6  38735351.9   1.298007e+14      250.86857         5796.9245             0
+## 28:                NO  2022      126417           Lan      NSHER/PS1      Age 7   4249209.3   1.660073e+12      232.99002         5122.7151             0
+## 29:                NO  2022      126417           Lan      NSHER/PS1      Age 8  23015443.4   4.069324e+13      226.62518         3745.1506             0
+## 30:                NO  2022      126417           Lan      NSHER/PS1      Age 9   9414406.7   6.235268e+12      229.19468         3928.8212             0
+##     vesselFlagCountry  year speciesCode catchCategory activityDomain fishDomain totalNumber varTotalNumber meanWeightLive varMeanWeightLive numSamplesAge</code></pre>
 <pre class="r"><code>imputedTotalEstimates$ESTIMATES</code></pre>
 <pre><code>## Key: &lt;fishDomain, activityDomain, vesselFlagCountry, year, catchCategory, speciesCode&gt;
-##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber
-##         &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;num&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;          &lt;num&gt;
-##  1:      Age 1          NSHER                NO  2022           Lan      126417    34477217   2.735194e+14
-##  2:    Age 10+          NSHER                NO  2022           Lan      126417    17148268   9.017361e+12
-##  3:      Age 2          NSHER                NO  2022           Lan      126417   444722679   5.014645e+15
-##  4:      Age 3          NSHER                NO  2022           Lan      126417    68662947   9.197637e+13
-##  5:      Age 4          NSHER                NO  2022           Lan      126417    40545522   6.869072e+13
-##  6:      Age 5          NSHER                NO  2022           Lan      126417    33497891   4.716873e+13
-##  7:      Age 6          NSHER                NO  2022           Lan      126417    98748535   4.231149e+14
-##  8:      Age 7          NSHER                NO  2022           Lan      126417    10832564   5.411386e+12
-##  9:      Age 8          NSHER                NO  2022           Lan      126417    58673568   1.326489e+14
-## 10:      Age 9          NSHER                NO  2022           Lan      126417    24000269   2.032528e+13
-##     numSamplesAge meanWeightLive varMeanWeightLive
-##             &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
-##  1:            NA       57.73038          698.1089
-##  2:            NA      234.12093         1648.0716
-##  3:            NA      124.86937          367.8026
-##  4:            NA      159.45356          629.5594
-##  5:            NA      187.64361         1399.9459
-##  6:            NA      207.44655         1766.2841
-##  7:            NA      250.86857         2907.5872
-##  8:            NA      232.99002         2569.4212
-##  9:            NA      226.62518         1878.4705
-## 10:            NA      229.19468         1970.5949</code></pre>
+##     fishDomain activityDomain vesselFlagCountry  year catchCategory speciesCode totalNumber varTotalNumber numSamplesAge meanWeightLive varMeanWeightLive
+##         &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;num&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;          &lt;num&gt;         &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
+##  1:      Age 1          NSHER                NO  2022           Lan      126417    34477217   2.735194e+14            NA       57.73038          698.1089
+##  2:    Age 10+          NSHER                NO  2022           Lan      126417    17148268   9.017361e+12            NA      234.12093         1648.0716
+##  3:      Age 2          NSHER                NO  2022           Lan      126417   444722679   5.014645e+15            NA      124.86937          367.8026
+##  4:      Age 3          NSHER                NO  2022           Lan      126417    68662947   9.197637e+13            NA      159.45356          629.5594
+##  5:      Age 4          NSHER                NO  2022           Lan      126417    40545522   6.869072e+13            NA      187.64361         1399.9459
+##  6:      Age 5          NSHER                NO  2022           Lan      126417    33497891   4.716873e+13            NA      207.44655         1766.2841
+##  7:      Age 6          NSHER                NO  2022           Lan      126417    98748535   4.231149e+14            NA      250.86857         2907.5872
+##  8:      Age 7          NSHER                NO  2022           Lan      126417    10832564   5.411386e+12            NA      232.99002         2569.4212
+##  9:      Age 8          NSHER                NO  2022           Lan      126417    58673568   1.326489e+14            NA      226.62518         1878.4705
+## 10:      Age 9          NSHER                NO  2022           Lan      126417    24000269   2.032528e+13            NA      229.19468         1970.5949</code></pre>
 </div>
 <div id="comparisons" class="section level2">
 <h2>Comparisons</h2>
@@ -749,30 +669,30 @@ desiredDomains &lt;- data.table::data.table(activityDomain=c(&quot;Q1&quot;,&quo
 ICaggregated &lt;- aggregateActivityDomains(ICconverted, desiredDomains)
 ICaggregated$ESTIMATES</code></pre>
 <pre><code>## Key: &lt;fishDomain, activityDomain, vesselFlagCountry, year, catchCategory, speciesCode&gt;
-##                      fishDomain activityDomain vesselFlagCountry   year catchCategory speciesCode totalNumber
-##                          &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;char&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;
-##  1: NO/2019/126441/Lan/U/ 1/  1             Q4                NO   2019           Lan      126441     414.498
-##  2: NO/2019/126441/Lan/U/ 2/  2             Q4                NO   2019           Lan      126441    2006.890
-##  3: NO/2019/126441/Lan/U/ 3/  3             Q4                NO   2019           Lan      126441   50950.900
-##  4: NO/2019/126441/Lan/U/ 4/  4             Q4                NO   2019           Lan      126441  265769.000
-##  5: NO/2019/126441/Lan/U/ 5/  5             Q4                NO   2019           Lan      126441  493239.000
-##  6: NO/2019/126441/Lan/U/ 6/  6             Q4                NO   2019           Lan      126441  451403.000
-##  7: NO/2019/126441/Lan/U/ 7/  7             Q4                NO   2019           Lan      126441  105499.000
-##  8: NO/2019/126441/Lan/U/ 8/  8             Q4                NO   2019           Lan      126441   39400.500
-##  9: NO/2019/126441/Lan/U/ 9/  9             Q4                NO   2019           Lan      126441   49051.100
-## 10: NO/2019/126441/Lan/U/10/100             Q4                NO   2019           Lan      126441   15673.100
-##     sampledCatch numSamplesAge meanWeightLive varMeanWeightLive
-##            &lt;num&gt;         &lt;num&gt;          &lt;num&gt;             &lt;num&gt;
-##  1:           NA            NA       440.0622                NA
-##  2:           NA            NA       797.0625                NA
-##  3:           NA            NA      1205.0729                NA
-##  4:           NA            NA      1658.0729                NA
-##  5:           NA            NA      2148.0938                NA
-##  6:           NA            NA      2673.0938                NA
-##  7:           NA            NA      3229.1042                NA
-##  8:           NA            NA      3813.1146                NA
-##  9:           NA            NA      4425.1042                NA
-## 10:           NA            NA      6916.1249                NA</code></pre>
+##                      fishDomain activityDomain vesselFlagCountry   year catchCategory speciesCode totalNumber sampledCatch numSamplesAge meanWeightLive
+##                          &lt;char&gt;         &lt;char&gt;            &lt;char&gt; &lt;char&gt;        &lt;char&gt;       &lt;num&gt;       &lt;num&gt;        &lt;num&gt;         &lt;num&gt;          &lt;num&gt;
+##  1: NO/2019/126441/Lan/U/ 1/  1             Q4                NO   2019           Lan      126441     414.498           NA            NA       440.0622
+##  2: NO/2019/126441/Lan/U/ 2/  2             Q4                NO   2019           Lan      126441    2006.890           NA            NA       797.0625
+##  3: NO/2019/126441/Lan/U/ 3/  3             Q4                NO   2019           Lan      126441   50950.900           NA            NA      1205.0729
+##  4: NO/2019/126441/Lan/U/ 4/  4             Q4                NO   2019           Lan      126441  265769.000           NA            NA      1658.0729
+##  5: NO/2019/126441/Lan/U/ 5/  5             Q4                NO   2019           Lan      126441  493239.000           NA            NA      2148.0938
+##  6: NO/2019/126441/Lan/U/ 6/  6             Q4                NO   2019           Lan      126441  451403.000           NA            NA      2673.0938
+##  7: NO/2019/126441/Lan/U/ 7/  7             Q4                NO   2019           Lan      126441  105499.000           NA            NA      3229.1042
+##  8: NO/2019/126441/Lan/U/ 8/  8             Q4                NO   2019           Lan      126441   39400.500           NA            NA      3813.1146
+##  9: NO/2019/126441/Lan/U/ 9/  9             Q4                NO   2019           Lan      126441   49051.100           NA            NA      4425.1042
+## 10: NO/2019/126441/Lan/U/10/100             Q4                NO   2019           Lan      126441   15673.100           NA            NA      6916.1249
+##     varMeanWeightLive
+##                 &lt;num&gt;
+##  1:                NA
+##  2:                NA
+##  3:                NA
+##  4:                NA
+##  5:                NA
+##  6:                NA
+##  7:                NA
+##  8:                NA
+##  9:                NA
+## 10:                NA</code></pre>
 <p>Check that aggregated sums to same number as disaggregated</p>
 <pre class="r"><code>nrow(ICconverted$ESTIMATES)</code></pre>
 <pre><code>## [1] 20</code></pre>
