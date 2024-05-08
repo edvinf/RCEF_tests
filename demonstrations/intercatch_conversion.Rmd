@@ -19,7 +19,8 @@ Define variables available for population and domain definitions (in RCEF nomenc
 ```{r}
 POPULATION_VARIABLES <- c("vesselFlagCountry", "year", "speciesCode", "catchCategory")
 ACTIVITY_DOMAIN_VARIABLES <- c("quarter", "month", "fleet", "area")
-FISH_DOMAIN_VARIABLES <- c("sex", "maturity", "minAge", "maxAge")
+FISH_DOMAIN_VARIABLES <- c("sex", "maturity", "domainVariable", "minValue", "maxValue")
+ESTIMATE_VARIABLES <- c("LengthTotal", "Abundance", "WeightLive")
 ```
 
 ## Conversion
@@ -140,7 +141,6 @@ Define functions to extract fish domains. They need to be extracted both for mak
 ```{r}
 #' extract fish domain portion of SDtable, keep all rows in same order as SDtabe.
 extractSDWfishDomains <- function(SDtable, plusgroupMax){
-  fishdomain <- SDtable
   
   #population variables
   fishdomain <- SDtable[,c("Country", "Year")]
@@ -153,11 +153,10 @@ extractSDWfishDomains <- function(SDtable, plusgroupMax){
   fishdomain$maturity <- convertMaturity(SDtable$Maturity)
   
   if (any(SDtable$CANUMtype=="Age")){
-    fishdomain$minAge <- as.numeric(NA)
-    fishdomain$maxAge <- as.numeric(NA)
-    fishdomain$minAge[SDtable$CANUMtype=="Age"] <- SDtable$AgeLength[SDtable$CANUMtype=="Age"]
-    fishdomain$maxAge[SDtable$CANUMtype=="Age"] <- SDtable$AgeLength[SDtable$CANUMtype=="Age"]
-    fishdomain$maxAge[SDtable$CANUMtype=="Age" & SDtable$AgeLength==SDtable$PlusGroup] <- plusgroupMax
+    fishdomain$domainVariable <- "Age"
+    fishdomain$minValue[SDtable$CANUMtype=="Age"] <- SDtable$AgeLength[SDtable$CANUMtype=="Age"]
+    fishdomain$maxValue[SDtable$CANUMtype=="Age"] <- SDtable$AgeLength[SDtable$CANUMtype=="Age"]
+    fishdomain$maxValue[SDtable$CANUMtype=="Age" & SDtable$AgeLength==SDtable$PlusGroup] <- plusgroupMax
   }
   
   if (any(SDtable$CANUMtype=="Length")){
@@ -293,7 +292,7 @@ extractEffort <- function(SItable){
 We will define a function to extract the ESTIMATE table. Mostly this is constructed from the SDtable, but it also need access to one variable at the SI table. In addtion it needs to be informed about two parameters not encoded in InterCatch:
 
 ```{r}
-extractEstimates <- function(SDtable, SItable, plusgroupMax, lengthMeasurement){
+extractEstimatesVariable <- function(SDtable, SItable, plusgroupMax, coverageUnit, variable){
   
   # look up samples origin for each domain
   SIactDom <- extractActivityDomains(SItable)
@@ -307,25 +306,70 @@ extractEstimates <- function(SDtable, SItable, plusgroupMax, lengthMeasurement){
   
   estimates <- estimates[,.SD, .SDcol=c(POPULATION_VARIABLES, "activityDomain", "fishDomain")]
   
-  #add values
-  estimates$totalNumber <- convertNumber(SDtable$unitCANUM, SDtable$NumberCaught)
-  estimates$meanWeightLive <- convertWeightG(SDtable$unitMeanWeight, SDtable$MeanWeight)
-  
-  if (any(!is.na(SDtable$MeanLength)) & lengthMeasurement != "TotalLength"){
-    stop("Only conversion with total length is implemented.")
+  estimates$variable <- variable
+  if (variable == "Abundance"){
+    estimates$total <- convertNumber(SDtable$unitCANUM, SDtable$NumberCaught)
+    estimates$mean <- as.numeric(NA)
+  }
+  else if (variable == "WeightLive"){
+    estimates$total <- convertWeightG(SDtable$unitMeanWeight, SDtable$MeanWeight) * 
+      convertNumber(SDtable$unitCANUM, SDtable$NumberCaught)
+    estimates$mean <- convertWeightG(SDtable$unitMeanWeight, SDtable$MeanWeight)
+  }
+  else if (variable == "LengthTotal"){
+    estimates$total <- as.numeric(NA)
+    estimates$mean <- convertLengthCm(SDtable$UnitMeanLength, SDtable$MeanLength)
+  }
+  else{
+    stop(paste("Conversion of variable", variable, "not supported"))
   }
 
-  estimates$meanTotalLength <- convertLengthCm(SDtable$UnitMeanLength, SDtable$MeanLength)
-  
   #add sample descriptions
+    if (any(SDtable$CANUMtype=="Age")){
+        estimates$NumSamples <- SDtable$NumSamplesAge  
+        estimates$NumMeas <- SDtable$NumAgeMeas  
+  }
+  
+  if (any(SDtable$CANUMtype=="Length")){
+        estimates$NumSamples <- SDtable$NumSamplesLngt
+        estimates$NumMeas <- SDtable$NumLngtMeas  
+  }
+
+  if (is.null(coverageUnit)){
+    warning("Need coverage unit in order to set sampledCoverage")
+      estimates$sampleCoverageKg <- as.numeric(NA)
+      estimates$sampleCoverageT <- as.numeric(NA)
+      estimates$sampleCoveragePC <- as.numeric(NA)
+  }
+  else if (coverageUnit=="kg"){
+    estimates$sampleCoverageKg <- SDtable$SampledCatch
+      estimates$sampleCoverageT <- as.numeric(NA)
+      estimates$sampleCoveragePC <- as.numeric(NA)
+  }
+  else if (coverageUnit=="T"){
+    estimates$sampleCoverageKg <- as.numeric(NA)
+      estimates$sampleCoverageT <- SDtable$SampledCatch
+      estimates$sampleCoveragePC <- as.numeric(NA)
+  }
+  else if (coverageUnit=="PC"){
+    estimates$sampleCoverageKg <- as.numeric(NA)
+      estimates$sampleCoverageT <- as.numeric(NA)
+      estimtaes$sampleCoveragePC <- SDtable$SampledCatch
+  }
   estimates$samplesOrigin <- SIactDom$SamplesOrigin[match(estimates$activityDomain, SIactDom$activityDomain)]
-  estimates$sampledCatch <- SDtable$SampledCatch
-  estimates$numSamplesLngt <- SDtable$NumSamplesLngt
-  estimates$numLngtMeas <- SDtable$NumLngtMeas  
-  estimates$numSamplesAge <- SDtable$NumSamplesAge  
-  estimates$numAgeMeas <- SDtable$NumAgeMeas  
+
   return(estimates)
 }
+
+extractEstimates <- function(SDtable, SItable, plusgroupMax, coverageUnit){
+  EST <- NULL
+  for (v in ESTIMATE_VARIABLES){
+    EST <- rbind(EST, extractEstimatesVariable(SDtable, SItable, plusgroupMax, coverageUnit, v))
+    
+  }
+  return(EST)
+}
+
 ```
 
 We combine these to make a "complete" conversion function:
@@ -334,11 +378,12 @@ We combine these to make a "complete" conversion function:
 #' Convert IC data to RCEF
 #' @param IC Data in InterCatch Exchange format, as parsed by RstoxData::parseInterCatch
 #' @param plusgroupMax the value to use as max age for any group representing an IC plusgroup
-convert <- function(IC, plusgroupMax=100, lengthMeasurement="TotalLength"){
+#' @param coverageUnit the field 'SampledCatch' in InterCatch is defined without unit, that needs to be specified for conversion
+convert <- function(IC, plusgroupMax=100){
   RCEF <- list()
   RCEF$CATCH <- extractCatch(IC$SI)
   RCEF$FISHDOMAIN <- extractFishDomain(IC$SD, plusgroupMax)
-  RCEF$ESTIMATES <- extractEstimates(IC$SD, IC$SI, plusgroupMax, lengthMeasurement)
+  RCEF$ESTIMATES <- extractEstimates(IC$SD, IC$SI, plusgroupMax, coverageUnit="kg")
   RCEF$EFFORT <- extractEffort(IC$SI)
   
   return(RCEF)
@@ -366,10 +411,7 @@ saveRDS(RCEF, "../data/ICconvertedEstimates.rds")
 ## Notes and Issues
 
 ### Usage
-It is a bit unclear if usage is (can be) an activity variable when converting from InterCatch. It does not exist on the SD-table. Unsure if it is possible to have SI records that differ in Usage, but is equal for all the mandatory fields.
-
-### Length
-Did not test conversion for length groups. Is IC agnostic about which length measurement is used? If so, we will have to convert with parameterization, as is tentatively done for meanTotalLength.
+It is a bit unclear if usage is (can be) an activityFomain variable when converting from InterCatch. It does not exist on the SD-table. Unsure if it is possible to have SI records that differ in Usage, but is equal for all the mandatory fields.
 
 ### Weight
 I think it is correct to map CATON from InterCatch to scientificWeight in CL, and OffLandings in InterCatch to officialWeight in CL. Need to check this, and carefully consider how we deal with ReportingCategory. Right now only conversion with category 'R' is supported, which may be simplisitic. ICES secretariat has informed us that the categories 'N', 'M' and 'A' are also used, and are proper population variables. Need to consider how they are captured in the concept 'ScientificWeight'.
@@ -383,54 +425,3 @@ Is it necessary to support info fields for InterCatch compatibility (InfoFleet, 
 
 ### Capitalization and naming
 I have spelled fields names in RCEF without capitalization. In the example files we have used a mix. Should decide on something.
-
-## Columns that need to be added
-The conversion excercies revealed some columns that need to be added to the RCEF draft.
-
-### Columns needed from CL (not in draft)
-
-* landingCategory
-* scientificWeight
-
-### Columns needed from BiologicalMeasurments (not in draft)
-
-* maturity
-
-### Columns needed from IC (not in draft)
-
-* SamplesOrigin
-* InfoFleet
-* InfoStockCoordinator
-* InfoGeneral
-
-### Columns not included, with reserved status in IC (not in draft)
-ICES secretariat has clarified that we can ignore these columns wrp to InterCatch compatibility.
-* DepthRange
-* Stock
-* QualityFlag
-* varCATON
-* varNumLanded
-* varWgtLanded
-* varLgtLanded
-
-### Columns already included from CL (already in draft)
-
-* vesselFlagCountry
-* speciesCode
-* catchCategory
-* quarter
-* month
-* officialWeight
-
-### Columns already included from BiologicalMeasurments (already in draft)
-
-* sex
-
-### Columns already included from IC (already in draft)
-
-* fleet
-* SampledCatch
-* NumSamplesLngt
-* NumLngtMeas
-* NumSamplesAge
-* NumAgeMeas
