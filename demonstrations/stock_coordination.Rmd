@@ -16,13 +16,40 @@ We will define some preliminary vocabularies for the columns that are valid in t
 
 ```{r format}
 POPULATION_VARIABLES <- c("vesselFlagCountry", "year", "catchCategory", "speciesCode")
-ACTIVITY_DOMAIN_VARIABLES <- c("quarter",	"month","stockArea",	"area",	"metier6",	"Fleet")
-FISH_DOMAIN_VARIABLES <- c("MinAge",	"MaxAge", "Sex")
-ESTIMATES_VALUE_VARIABLES <- c("totalNumber", "totalWeightLive", "varTotalNumber", "varTotalWeight")
-SAMPLE_DESCRIPTION_VARIABLES <- c("numSamplesLength", "numLngMeas", "numSamplesAge", "sampledCatch")
+ACTIVITY_DOMAIN_VARIABLES <- c("quarter",	"month","stockArea",	"area",	"metier6",	"fleet")
+FISH_DOMAIN_VARIABLES <- c("sex", "maturity", "domainVariable", "minValue", "maxValue")
+ESTIMATES_VALUE_VARIABLES <- c("total", "mean", "varianceTotal", "varianceMean")
+SAMPLE_DESCRIPTION_VARIABLES <- c("numSamples", "numMeas","sampledCatchKg","sampledCatchT","sampledCatchPC")
 ```
 
 Some example files are located in ../data .
+
+## Sum of product test
+
+An example of how to perform a sum of product test is provided in the following functions:
+
+```{r SOP}
+#' Perform a sum of product tests.
+#' Calculates the sum of the product of abundance and mean weight in a domain and compares it to total catch.
+#' @param RCEF domain definitions and estimates in the RCEF format.
+#' @return table with total weights in domain, SOP-estimates, and the relative differences
+sopTest <- function(RCEF){
+  abundance <- RCEF$ESTIMATES[variable=="Abundance",]
+  abundance$totalN <- abundance$total
+  meanW <- RCEF$ESTIMATES[variable=="WeightLive",]
+  meanW$meanWeight <- meanW$mean
+  tabSOP <- merge(abundance, meanW, by=c(POPULATION_VARIABLES, "fishDomain", "activityDomain"))
+  
+  sop <- tabSOP[,list(sopWeight=sum(totalN*meanWeight)/1000),by="activityDomain"]
+  totalCatch <- RCEF$CATCH[,list(totalWeight=sum(scientificWeight)),by="activityDomain"]
+  
+  resultTab <- merge(totalCatch, sop, all.x=T)
+  resultTab$relDiff <- (resultTab$sopWeight - resultTab$totalWeight) / resultTab$totalWeight
+  
+  return(resultTab)
+}
+```
+
 
 ## Aggregate domains
 
@@ -52,7 +79,7 @@ aggregateActivityDomains <- function(RCEF, desiredDomains){
   # domains encompass all values for domain variables not provided
   desiredDomains <- desiredDomains[,.SD, .SDcol=names(desiredDomains)[names(desiredDomains) %in% names(catch)]]
   if (ncol(desiredDomains) == 1){
-    soptifnot(length(unique(desiredDomain$activtyDomain))!=1)
+    stoptifnot(length(unique(desiredDomain$activtyDomain))!=1)
     catch$actvityDomain <- desiredDomain$activtyDomain
   }
   else{
@@ -64,6 +91,15 @@ aggregateActivityDomains <- function(RCEF, desiredDomains){
     }
   }
   
+    #insert NAs for any unsampled domains
+  DOMS <- catch[!duplicated(apply(catch[,.SD,.SDcol=c(POPULATION_VARIABLES, "activityDomain")],
+                                                        MARGIN=1, FUN=paste, collapse=",")),.SD,
+                                      .SDcol=c(POPULATION_VARIABLES, "activityDomain")]
+  DOMS$k<-1
+  DOMS <- merge(data.table::CJ(k=1, variable=unique(estimates$variable), fishDomain=unique(estimates$fishDomain)), DOMS, by="k", allow.cartesian = T)
+  estimates <- merge(estimates, DOMS, by=c("variable", POPULATION_VARIABLES, "activityDomain", "fishDomain"), all.y=T)
+
+  
   estimates$activityDomain.desired <- catch$activityDomain.desired[match(estimates$activityDomain, catch$activityDomain)]
   
   catch$activityDomain <- catch$activityDomain.desired
@@ -71,43 +107,32 @@ aggregateActivityDomains <- function(RCEF, desiredDomains){
   
   estimates$activityDomain <- estimates$activityDomain.desired
   estimates$activityDomain.desired <- NULL
+
   
-  aggregated <- NULL
-  # iterate over value variables and add
-  for (e in names(estimates)){
-    if (e %in% ESTIMATES_VALUE_VARIABLES){
-      agg <- estimates[,list(agg=sum(get(e))), by=c("fishDomain", "activityDomain", POPULATION_VARIABLES)]
-      names(agg)[names(agg)=="agg"] <- e
-      
-      if (is.null(aggregated)){
-        aggregated <- agg
-      }
-      else{
-        aggregated <- merge(aggregated, agg)
-      }
+  #infer optionally present columns
+  for (val in ESTIMATES_VALUE_VARIABLES){
+    if (is.null(estimates[[val]])){
+      estimates[[val]] <- as.numeric(NA)
     }
   }
+
+  # aggregate totals
+  aggTotals <- estimates[,list(total=sum(total), varianceTotal=sum(varianceTotal)), by=c("variable", "fishDomain", "activityDomain", POPULATION_VARIABLES)]
+  
+  totalN <- aggTotals[variable=="Abundance",]
+  totalN$totalNumber <- totalN$total
+  estimates <- merge(estimates, totalN[,.SD,.SDcol=c("totalNumber", "fishDomain", "activityDomain", POPULATION_VARIABLES)], by=c("fishDomain", "activityDomain", POPULATION_VARIABLES), all.x=T)
+    
+  # aggregate means
+  aggMeans <- estimates[,list(mean = sum(mean*totalNumber)/sum(totalNumber), varianceMean = sum(varianceMean * (totalNumber/sum(totalNumber))**2)), by=c("variable", "fishDomain", "activityDomain", POPULATION_VARIABLES)]
+
+  aggregated <- merge(aggTotals, aggMeans, by=c("variable", "fishDomain", "activityDomain", POPULATION_VARIABLES))
+  
   # iterate over sample variables and set to NA
   for (e in names(estimates)){
     if (e %in% SAMPLE_DESCRIPTION_VARIABLES){
       aggregated[[e]] <- as.numeric(NA)
     }
-  }
-  #
-  # Compute aggregated mean weight
-  # 
-  if (!("varMeanWeightLive" %in% names(estimates))){
-    estimates$varMeanWeightLive <- as.numeric(NA)
-  }
-  if (!("meanWeightLive" %in% names(estimates))){
-    estimates$meanWeightLive <- as.numeric(NA)
-  }
-  agg <- estimates[,list(meanWeightLive = sum(meanWeightLive*totalNumber)/sum(totalNumber), varMeanWeightLive = sum(varMeanWeightLive * (totalNumber/sum(totalNumber))**2)), by=c("fishDomain", "activityDomain", POPULATION_VARIABLES)]
-  if (is.null(aggregated)){
-        aggregated <- agg
-  }
-  else{
-        aggregated <- merge(aggregated, agg)
   }
 
   RCEF$ESTIMATES <- aggregated
@@ -154,19 +179,15 @@ imputeMeanWeight <- function(RCEF, imputeTo, imputeFrom, totalWeightField){
   stopifnot(imputeTo %in% RCEF$CATCH$activityDomain)
 
   estimatesImputed <- RCEF$ESTIMATES[activityDomain==imputeFrom,]
-  estimatesImputed$fraction <- estimatesImputed$totalNumber * estimatesImputed$meanWeightLive / sum(estimatesImputed$totalNumber * estimatesImputed$meanWeightLive)
-  estimatesImputed$varFraction <- estimatesImputed$varTotalNumber * (estimatesImputed$meanWeightLive / sum(estimatesImputed$totalNumber * estimatesImputed$meanWeightLive))**2
+  fractions <- merge(estimatesImputed[variable=="Abundance",], estimatesImputed[variable=="WeightLive",], suffix=c(".abundance", ".weight"), by=c(POPULATION_VARIABLES, "activityDomain", "fishDomain"))
+  fracTotals <- fractions[,list(totalInDomain = sum(total.abundance * mean.weight)), by=c(POPULATION_VARIABLES, "activityDomain")]
+  fractions <- merge(fractions, fracTotals)
+  fractions <- fractions[,list(weightFraction=total.abundance * mean.weight / totalInDomain,
+                               varWeightFraction=varianceTotal.abundance * (mean.weight / totalInDomain)**2,
+                               meanWeight=mean.weight), by=c(POPULATION_VARIABLES, "activityDomain", "fishDomain")]
+
+  estimatesImputed <- merge(estimatesImputed, fractions, by=c(POPULATION_VARIABLES, "activityDomain", "fishDomain"))
   
-  for (e in names(estimatesImputed)){
-    if (e %in% ESTIMATES_VALUE_VARIABLES){
-      estimatesImputed[[e]] <- NA
-    }
-  }
-  for (e in names(estimatesImputed)){
-    if ( e %in% SAMPLE_DESCRIPTION_VARIABLES){
-    estimatesImputed[[e]] <- 0      
-    }
-  }
   estimatesImputed$activityDomain <- imputeTo
   
   if (totalWeightField=="official"){
@@ -178,11 +199,24 @@ imputeMeanWeight <- function(RCEF, imputeTo, imputeFrom, totalWeightField){
   else{
     stop("Does not recognize option for totalWeightField.")
   }
+
+  estimatesImputed$total[estimatesImputed$variable=="Abundance"] <- totalWeight *
+    estimatesImputed$weightFraction[estimatesImputed$variable=="Abundance"] /
+    estimatesImputed$meanWeight[estimatesImputed$variable=="Abundance"]
   
-  estimatesImputed$totalNumber <- totalWeight * estimatesImputed$fraction / estimatesImputed$meanWeightLive
-  estimatesImputed$varTotalNumber <- estimatesImputed$varFraction * (totalWeight / estimatesImputed$meanWeightLive)**2
-  estimatesImputed$fraction <- NULL
-  estimatesImputed$varFraction <- NULL
+  estimatesImputed$varianceTotal[estimatesImputed$variable=="Abundance"] <- estimatesImputed$varWeightFraction[estimatesImputed$variable=="Abundance"] * (totalWeight / estimatesImputed$meanWeight[estimatesImputed$variable=="Abundance"])**2
+  estimatesImputed$weightFraction <- NULL
+  estimatesImputed$varWeightFraction <- NULL
+  estimatesImputed$meanWeight <- NULL
+  
+  for (v in unique(estimatesImputed$variable)){
+    if (!(v %in% c("Abundance", "WeightLive"))){
+      estimatesImputed$total[estimatesImputed$variable==v] <- as.numeric(NA)
+      estimatesImputed$varianceTotal[estimatesImputed$variable==v] <- as.numeric(NA)
+      estimatesImputed$mean[estimatesImputed$variable==v] <- as.numeric(NA)
+      estimatesImputed$varianceMean[estimatesImputed$variable==v] <- as.numeric(NA)
+    }
+  }
   
   estimates <- RCEF$ESTIMATES[RCEF$ESTIMATES$activityDomain != imputeTo,]
   estimates <- rbind(estimates, estimatesImputed)
@@ -220,11 +254,11 @@ totalEstimates$ESTIMATES$Method="Direct"
 imputedTotalEstimates$ESTIMATES$Method="Imputed"
 totalAggregatedEstimates$ESTIMATES$Method="Aggregated"
 
-comparison <- rbind(totalEstimates$ESTIMATES, imputedTotalEstimates$ESTIMATES, totalAggregatedEstimates$ESTIMATES)
+comparison <- rbind(totalEstimates$ESTIMATES[totalEstimates$ESTIMATES$variable=="Abundance"], imputedTotalEstimates$ESTIMATES[imputedTotalEstimates$ESTIMATES$variable=="Abundance"], totalAggregatedEstimates$ESTIMATES[totalAggregatedEstimates$ESTIMATES$variable=="Abundance"])
 
 ggplot2::ggplot(comparison) +
-    ggplot2::geom_col(ggplot2::aes(x=fishDomain, y=totalNumber, fill=Method), position="dodge") +
-    ggplot2::geom_errorbar(ggplot2::aes(x=fishDomain, ymin=totalNumber - sqrt(varTotalNumber), ymax=totalNumber + sqrt(varTotalNumber), group=Method), width=.2, position=ggplot2::position_dodge(.9)) +
+    ggplot2::geom_col(ggplot2::aes(x=fishDomain, y=total, fill=Method), position="dodge") +
+    ggplot2::geom_errorbar(ggplot2::aes(x=fishDomain, ymin=total - sqrt(varianceTotal), ymax=total + sqrt(varianceTotal), group=Method), width=.2, position=ggplot2::position_dodge(.9)) +
   ggplot2::ylab("total number +/- SE") +
   ggplot2::xlab("Age group")
 
@@ -235,7 +269,9 @@ Load and aggregate example data converted from InterCatch
 
 ```{r}
 ICconverted <- readRDS("../data/ICconvertedEstimates.rds")
-desiredDomains <- data.table::data.table(activityDomain=c("Q1","Q2","Q3","Q4"), quarter=c(1,2,3,4))
+desiredDomains <- ICconverted$CATCH[,.SD,.SDcol=c(ACTIVITY_DOMAIN_VARIABLES[ACTIVITY_DOMAIN_VARIABLES %in% names(ICconverted$CATCH)], "activityDomain")]
+desiredDomains$activityDomain[!(desiredDomains$activityDomain %in% ICconverted$ESTIMATES$activityDomain)] <- "unsampled"
+desiredDomains$activityDomain[desiredDomains$activityDomain %in% ICconverted$ESTIMATES$activityDomain] <- "sampled"
 ICaggregated <- aggregateActivityDomains(ICconverted, desiredDomains)
 ICaggregated$ESTIMATES
 ```
@@ -245,11 +281,15 @@ Check that aggregated sums to same number as disaggregated
 ```{r}
 nrow(ICconverted$ESTIMATES)
 nrow(ICaggregated$ESTIMATES)
-sum(ICconverted$ESTIMATES$totalNumber) - sum(ICaggregated$ESTIMATES$totalNumber)
+sum(ICconverted$ESTIMATES$total[ICconverted$ESTIMATES$variable=="Abundance"]) - sum(ICaggregated$ESTIMATES$total[ICaggregated$ESTIMATES$variable=="Abundance"])
+
+sum(ICconverted$ESTIMATES$total[ICconverted$ESTIMATES$variable=="Abundance"]) - sum(ICaggregated$ESTIMATES$total[ICaggregated$ESTIMATES$variable=="Abundance"])
+
+sopTest(ICaggregated)
+sopTest(ICconverted)
 ```
 
 
 ## Issues
 
-* Should we change the representation of values in the ESTIMATES table, so that more generic aggregation scripts can be made? For instance represent all variables as VARIABLE, TOTAL, MEAN, TOTALVAR, and MEANVAR. In addition to TOTALNUMBER and TOTALNUMBERVAR. This would also provide a solution to the open issue about how to represent different length measurements (total length, carapax length, etc.)
 * How should we deal with sample description parameters. It seems they cannot generally be aggregated across domains. Redifining them to be a lower bound makes it trivial to aggregate, and allows us to label imputed domains with sample size 0. Otherwise they are probably not important to keep after stock-coordination, and we could set them to NA. Having stock-coordination routines return the same format as they accept, facilitates stringing together stock-coordination, as is done repeatedly above.
